@@ -1,5 +1,5 @@
 /**
- * AnalysisFormPage Component: Primary Farmer Context & Analysis Input Form.
+ * AnalysisFormPage Component: Stitch-inspired Farmer Input & Scenario Selector.
  * SSOT Reference: 06_FRONTEND_CONTRACT.md Section 1
  */
 import React, { useState, useEffect } from 'react';
@@ -11,12 +11,18 @@ import { CommoditySelector } from '../components/CommoditySelector';
 import {
   ArrowRight,
   AlertCircle,
-  Wheat,
+  Sparkles,
+  MapPin,
+  Leaf,
+  Truck,
+  Compass,
 } from 'lucide-react';
 
 interface AnalysisFormPageProps {
   onAnalysisComplete: (result: any) => void;
 }
+
+const RADIUS_OPTIONS = [50, 100, 120, 150, 200];
 
 export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   onAnalysisComplete,
@@ -31,7 +37,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   const [longitude, setLongitude] = useState<number>(73.85);
   const [selectedCommodityId, setSelectedCommodityId] = useState<string>('onion');
   const [quantityQuintals, setQuantityQuintals] = useState<number>(25);
-  const [radiusKm, setRadiusKm] = useState<number>(100);
+  const [radiusKm, setRadiusKm] = useState<number>(120);
   const [customTransportRate, setCustomTransportRate] = useState<string>('');
 
   const [loadingStates, setLoadingStates] = useState<boolean>(true);
@@ -40,7 +46,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load initial states and commodities
+  // Load catalogs on mount
   useEffect(() => {
     async function initCatalog() {
       try {
@@ -53,7 +59,6 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         setLoadingStates(false);
         setLoadingCommodities(false);
 
-        // Load default districts for Maharashtra
         const dists = await apiClient.getDistricts('maharashtra');
         setDistricts(dists);
       } catch (err: any) {
@@ -65,7 +70,6 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     initCatalog();
   }, []);
 
-  // Handle State Change
   const handleSelectState = async (stateId: string) => {
     setSelectedStateId(stateId);
     setSelectedDistrictId('');
@@ -146,43 +150,38 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 via-emerald-700 to-teal-800 rounded-3xl p-6 md:p-8 text-white shadow-xl">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm">
-            <Wheat className="w-7 h-7 text-emerald-300" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              FasalDisha — फसल दिशा
-            </h1>
-            <p className="text-xs md:text-sm text-emerald-100 font-medium">
-              AI Price Forecasting • Cross-Boundary Market Routing • Risk-Adjusted Decisions
-            </p>
-          </div>
-        </div>
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Stitch-style Hero Intro */}
+      <div className="text-center space-y-2 pt-2 pb-1">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          Cross-Boundary Decision Support
+        </span>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight font-heading">
+          Where & When Should You Sell Your Harvest?
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+          Compare real-time mandis, 7-day ML price forecasts, transit costs, and active weather risks to maximize your net return.
+        </p>
       </div>
 
       {errorMsg && (
-        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center gap-3 text-rose-800 dark:text-rose-300 text-sm">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center gap-3 text-rose-800 dark:text-rose-300 text-xs sm:text-sm">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Main Form Card */}
+      {/* Main Stitch Card Form */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 rounded-3xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 shadow-sm space-y-6"
+        className="bg-white dark:bg-[#151b23] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 sm:p-7 space-y-6"
       >
-        {/* Section 1: Geographic Context */}
+        {/* Step 1: Location & Coordinates */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-            <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 flex items-center justify-center text-xs">
-              1
-            </span>
-            <span>Geographic Context & Administrative Scope</span>
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <MapPin className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>1. Geographic Scope & Coordinates</span>
           </div>
 
           <GeographySelector
@@ -195,16 +194,6 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
             onSelectState={handleSelectState}
             onSelectDistrict={setSelectedDistrictId}
           />
-        </div>
-
-        {/* Section 2: Authoritative Coordinates */}
-        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-            <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 flex items-center justify-center text-xs">
-              2
-            </span>
-            <span>Farmer Location & Nearby Radius</span>
-          </div>
 
           <LocationPicker
             latitude={latitude}
@@ -217,13 +206,11 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
           />
         </div>
 
-        {/* Section 3: Commodity, Harvest Quantity & Radius */}
-        <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-            <span className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 flex items-center justify-center text-xs">
-              3
-            </span>
-            <span>Crop Metadata & Harvest Economics</span>
+        {/* Step 2: Commodity & Perishability */}
+        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Leaf className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>2. Crop & Perishability Class</span>
           </div>
 
           <CommoditySelector
@@ -232,10 +219,18 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
             loading={loadingCommodities}
             onSelectCommodity={setSelectedCommodityId}
           />
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        {/* Step 3: Harvest Volume & Search Radius */}
+        <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <Truck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>3. Harvest Volume & Market Radius</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Harvest Quantity (Quintals)
               </label>
               <div className="relative">
@@ -246,40 +241,18 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
                   step="0.5"
                   value={quantityQuintals}
                   onChange={(e) => setQuantityQuintals(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0e1318] border border-slate-300 dark:border-slate-700 rounded-xl text-sm font-semibold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-[#151b23] transition"
                   required
                 />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400">
+                <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-400 font-medium">
                   Quintals
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Search Radius (km)
-              </label>
-              <div className="relative">
-                <input
-                  id="radius-input"
-                  type="number"
-                  min="10"
-                  max="300"
-                  step="5"
-                  value={radiusKm}
-                  onChange={(e) => setRadiusKm(parseFloat(e.target.value) || 100)}
-                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm"
-                  required
-                />
-                <span className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-gray-400">
-                  km (Max 300)
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Transport Rate Override (₹/Q/km)
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Transport Rate Override (Optional)
               </label>
               <input
                 id="transport-rate-input"
@@ -288,29 +261,57 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
                 placeholder="Default: ₹2.5/Q/km"
                 value={customTransportRate}
                 onChange={(e) => setCustomTransportRate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0e1318] border border-slate-300 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-[#151b23] transition"
               />
+            </div>
+          </div>
+
+          {/* Quick Radius Selector Pills */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                <Compass className="w-3.5 h-3.5 text-slate-400" />
+                <span>Search Radius: <strong className="text-emerald-600 dark:text-emerald-400">{radiusKm} km</strong></span>
+              </label>
+              <span className="text-[11px] text-slate-400">Max 300 km</span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {RADIUS_OPTIONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRadiusKm(r)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition duration-150 ${
+                    radiusKm === r
+                      ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {r} km
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-6">
+        {/* Big Action Submit CTA */}
+        <div className="pt-2">
           <button
             id="run-analysis-button"
             type="submit"
             disabled={submitting}
-            className="w-full py-4 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2.5 text-base transition duration-200 disabled:opacity-50"
+            className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 text-sm sm:text-base transition duration-200 disabled:opacity-50"
           >
             {submitting ? (
               <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Running Routing & Decision Analysis...</span>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Calculating Optimal Market Routing & Risks...</span>
               </>
             ) : (
               <>
-                <span>Run Market Routing & Risk Analysis</span>
-                <ArrowRight className="w-5 h-5" />
+                <span>Analyze Optimal Mandis & Price Forecast</span>
+                <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>

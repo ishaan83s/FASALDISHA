@@ -1,5 +1,5 @@
 /**
- * ForecastChart / ForecastPanel Component: 7-Day ML Price Horizons, Peak Alert, and Provenance.
+ * ForecastChart Component: Streamlined 7-Day ML Price Horizons & Trend.
  * SSOT Reference: 02_DATA_AND_ML_SSOT.md Section 5 & 8, 06_FRONTEND_CONTRACT.md Section 3, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
  */
 import React from 'react';
@@ -7,18 +7,14 @@ import type { ForecastOutput } from '../types';
 import {
   TrendingUp,
   Sparkles,
-  Database,
   CheckCircle2,
 } from 'lucide-react';
 
 interface ForecastChartProps {
   forecast: ForecastOutput;
-  commodityName: string;
 }
 
-export const ForecastChart: React.FC<ForecastChartProps> = ({
-  forecast,
-}) => {
+export const ForecastChart: React.FC<ForecastChartProps> = ({ forecast }) => {
   const maxPrice = Math.max(
     forecast.currentPrice,
     forecast.expectedPeakPrice,
@@ -35,115 +31,92 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
   const gainPercent = ((gainFromCurrent / Math.max(forecast.currentPrice, 1)) * 100).toFixed(1);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 md:p-6 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-gray-700/60">
-        <div>
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              7-Day Price Forecast & Peak Analysis
-            </h2>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Model: <span className="font-semibold text-gray-700 dark:text-gray-300">{forecast.modelType}</span> ({forecast.forecastScope}) • Provenance: <span className="font-semibold text-gray-700 dark:text-gray-300">{forecast.historyClassification}</span> ({forecast.historyWindowDays}-day series)
-          </p>
+    <div className="bg-white dark:bg-gray-800/90 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 md:p-5 shadow-sm space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100 dark:border-gray-700/60">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+            7-Day Price Forecast & Peak Detection
+          </h2>
         </div>
 
-        {/* Peak Alert Banner */}
         {forecast.peakAlert ? (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 border border-amber-500/40 rounded-xl text-amber-800 dark:text-amber-300 text-xs font-bold animate-pulse">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>PEAK ALERT: +{gainPercent}% Gain Expected</span>
-          </div>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-800 dark:text-amber-300 text-xs font-bold animate-pulse">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Peak Expected: +{gainPercent}% (Day {forecast.peakDay})</span>
+          </span>
         ) : (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-600 dark:text-gray-300 text-xs font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Normal Price Trajectory</span>
-          </div>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-[11px]">
+            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+            <span>Normal Trajectory</span>
+          </span>
         )}
       </div>
 
-      {/* Key Horizon Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200/80 dark:border-gray-700">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Current Modal</span>
-          <p className="text-lg font-extrabold text-gray-900 dark:text-white mt-1">
-            ₹{forecast.currentPrice.toLocaleString('en-IN')}
+      {/* 4 Stat Highlights */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+        <div className="p-2.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60">
+          <span className="text-gray-400 text-[10px] uppercase font-semibold">Current Modal</span>
+          <p className="text-base font-bold text-gray-900 dark:text-white mt-0.5">
+            ₹{forecast.currentPrice.toLocaleString('en-IN')}/q
           </p>
-          <span className="text-[11px] text-gray-400">Baseline Price</span>
         </div>
 
-        <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200/80 dark:border-gray-700">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Day 1 Forecast</span>
-          <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">
-            ₹{forecast.forecast1Day.toLocaleString('en-IN')}
+        <div className="p-2.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60">
+          <span className="text-gray-400 text-[10px] uppercase font-semibold">Day 1 Horizon</span>
+          <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+            ₹{forecast.forecast1Day.toLocaleString('en-IN')}/q
           </p>
-          <span className="text-[11px] text-gray-400">24-hour horizon</span>
         </div>
 
-        <div className="p-3.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200/80 dark:border-gray-700">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Day 3 Forecast</span>
-          <p className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 mt-1">
-            ₹{forecast.forecast3Day.toLocaleString('en-IN')}
+        <div className="p-2.5 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-100 dark:border-gray-700/60">
+          <span className="text-gray-400 text-[10px] uppercase font-semibold">Day 3 Horizon</span>
+          <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+            ₹{forecast.forecast3Day.toLocaleString('en-IN')}/q
           </p>
-          <span className="text-[11px] text-gray-400">72-hour horizon</span>
         </div>
 
-        <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800/60">
-          <span className="text-xs font-medium text-amber-800 dark:text-amber-300 flex items-center justify-between">
-            <span>Expected Peak</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
+        <div className="p-2.5 bg-amber-50/80 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800/50">
+          <div className="flex items-center justify-between">
+            <span className="text-amber-800 dark:text-amber-300 text-[10px] uppercase font-bold">Expected Peak</span>
+            <span className="text-[9px] font-extrabold px-1 rounded bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200">
               Day {forecast.peakDay}
             </span>
-          </span>
-          <p className="text-lg font-extrabold text-amber-900 dark:text-amber-300 mt-1">
-            ₹{forecast.expectedPeakPrice.toLocaleString('en-IN')}
+          </div>
+          <p className="text-base font-black text-amber-900 dark:text-amber-200 mt-0.5">
+            ₹{forecast.expectedPeakPrice.toLocaleString('en-IN')}/q
           </p>
-          <span className="text-[11px] text-amber-700/80 dark:text-amber-400 font-medium">
-            +{gainPercent}% (₹{gainFromCurrent.toLocaleString('en-IN')}/q)
-          </span>
         </div>
       </div>
 
-      {/* 7-Day Visual Bar/Point Trend */}
+      {/* 7-Day Visual Progression Bars */}
       {forecast.dailyForecast.length > 0 && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-            <span>7-Day Price Progression (₹/Quintal)</span>
-            <span>Confidence: {Math.round(forecast.forecastConfidence * 100)}%</span>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2 pt-2">
+        <div className="pt-1">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {forecast.dailyForecast.map((point) => {
               const isPeak = point.day === forecast.peakDay;
               const heightPercent = Math.max(
-                15,
-                Math.round(((point.predictedPrice - minPrice + 20) / (range + 40)) * 100)
+                20,
+                Math.round(((point.predictedPrice - minPrice + 10) / (range + 20)) * 100)
               );
 
               return (
-                <div key={point.day} className="flex flex-col items-center gap-1.5">
-                  <div className="w-full h-24 bg-gray-100 dark:bg-gray-900/60 rounded-lg flex flex-col justify-end p-1 relative overflow-hidden">
-                    {isPeak && (
-                      <div className="absolute top-1 left-1/2 -translate-x-1/2">
-                        <span className="text-[9px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-200 dark:bg-amber-900/90 px-1 rounded-sm">
-                          PEAK
-                        </span>
-                      </div>
-                    )}
+                <div key={point.day} className="flex flex-col items-center gap-1">
+                  <div className="w-full h-16 bg-gray-100 dark:bg-gray-900/50 rounded-lg flex flex-col justify-end p-0.5 relative overflow-hidden">
                     <div
                       style={{ height: `${heightPercent}%` }}
-                      className={`w-full rounded-md transition-all duration-300 ${
+                      className={`w-full rounded transition-all duration-200 ${
                         isPeak
-                          ? 'bg-amber-500 dark:bg-amber-400 shadow-lg shadow-amber-500/30'
+                          ? 'bg-amber-500 dark:bg-amber-400 shadow-md'
                           : 'bg-emerald-500/80 dark:bg-emerald-600'
                       }`}
                     />
                   </div>
-                  <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
                     ₹{Math.round(point.predictedPrice)}
                   </span>
-                  <span className="text-[10px] text-gray-400">Day {point.day}</span>
+                  <span className="text-[9px] text-gray-400">D{point.day}</span>
                 </div>
               );
             })}
@@ -151,17 +124,10 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
         </div>
       )}
 
-      {/* Historical Basis & Provenance Footnote */}
-      <div className="p-3 bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-200/60 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-400 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Database className="w-3.5 h-3.5 text-gray-400" />
-          <span>
-            History Basis: <strong className="text-gray-700 dark:text-gray-300">{forecast.historySourceLabel}</strong>
-          </span>
-        </div>
-        <span className="text-[11px] text-gray-400">
-          Classification: <strong>{forecast.historyClassification}</strong>
-        </span>
+      {/* Provenance Footnote */}
+      <div className="pt-2 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-100 dark:border-gray-700/60">
+        <span>Basis: {forecast.historySourceLabel} ({forecast.historyClassification})</span>
+        <span>Model: {forecast.modelType}</span>
       </div>
     </div>
   );

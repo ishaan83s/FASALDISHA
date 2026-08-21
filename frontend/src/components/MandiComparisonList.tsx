@@ -9,14 +9,12 @@ import { Building2, Compass, AlertCircle } from 'lucide-react';
 
 interface MandiComparisonListProps {
   candidates: CandidateMandi[];
-  quantityQuintals: number;
   radiusKm: number;
   crossBoundary: boolean;
 }
 
 export const MandiComparisonList: React.FC<MandiComparisonListProps> = ({
   candidates,
-  quantityQuintals,
   radiusKm,
   crossBoundary,
 }) => {
@@ -35,12 +33,12 @@ export const MandiComparisonList: React.FC<MandiComparisonListProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            Market Routing & Mandi Rankings ({candidates.length} Discovered)
+          <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <h2 className="text-base font-bold text-gray-900 dark:text-white">
+            Market Rankings ({candidates.length} Mandis Found)
           </h2>
         </div>
 
@@ -48,20 +46,19 @@ export const MandiComparisonList: React.FC<MandiComparisonListProps> = ({
           <Compass className="w-3.5 h-3.5 text-gray-400" />
           <span>Radius: {radiusKm} km</span>
           {crossBoundary && (
-            <span className="font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
-              Cross-Boundary Enabled
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800 text-[10px]">
+              Cross-Boundary
             </span>
           )}
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {candidates.map((candidate, idx) => (
           <MandiComparisonCard
             key={candidate.mandi.mandiId}
             candidate={candidate}
             isRecommended={idx === 0}
-            quantityQuintals={quantityQuintals}
           />
         ))}
       </div>

@@ -1,9 +1,9 @@
 /**
- * RecommendationBanner Component: Top Hero Banner on Results Dashboard.
+ * RecommendationBanner Component: Clean, High-Impact Hero Banner.
  * SSOT Reference: 06_FRONTEND_CONTRACT.md Section 3, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
  */
 import React from 'react';
-import type { DecisionOutput } from '../types';
+import type { DecisionOutput, WeatherSignal, CandidateMandi } from '../types';
 import {
   TrendingUp,
   MapPin,
@@ -11,70 +11,73 @@ import {
   AlertOctagon,
   ShieldCheck,
   Zap,
+  CloudRain,
+  IndianRupee,
 } from 'lucide-react';
 
 interface RecommendationBannerProps {
   decision: DecisionOutput;
-  commodityName: string;
+  weather: WeatherSignal;
+  topMandi?: CandidateMandi;
 }
 
 export const RecommendationBanner: React.FC<RecommendationBannerProps> = ({
   decision,
+  weather,
+  topMandi,
 }) => {
-  const getBannerStyle = (rec: string, isOverride: boolean) => {
-    if (isOverride || rec === 'SELL_EARLY_DUE_TO_RISK' || rec === 'AVOID_MANDI_OR_ROUTE') {
+  const isRiskOverride = decision.riskOverrideApplied;
+  const isSevereWeather = weather.impactLevel === 'HIGH' || weather.impactLevel === 'CRITICAL';
+
+  const getStyle = () => {
+    const rec = String(decision.finalRecommendation);
+    if (isRiskOverride || rec === 'SELL_EARLY_DUE_TO_RISK') {
       return {
-        bg: 'from-amber-900/90 via-rose-900/80 to-slate-900',
+        bg: 'from-amber-950/90 via-slate-900 to-rose-950/80',
         badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-        accentColor: 'text-rose-400',
-        icon: <AlertOctagon className="w-8 h-8 text-rose-400" />,
-        label: 'RISK OVERRIDE RECOMMENDATION',
+        badgeText: '⚠️ RISK OVERRIDE',
+        icon: <AlertOctagon className="w-7 h-7 text-rose-400" />,
       };
     }
     if (rec === 'SELL_AT_RECOMMENDED_MANDI' || rec === 'TRAVEL') {
       return {
-        bg: 'from-emerald-900/90 via-teal-900/80 to-slate-900',
+        bg: 'from-emerald-950/90 via-slate-900 to-teal-950/80',
         badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-        accentColor: 'text-emerald-400',
-        icon: <TrendingUp className="w-8 h-8 text-emerald-400" />,
-        label: 'OPTIMAL MARKET ROUTING',
+        badgeText: '✨ OPTIMAL ROUTING',
+        icon: <TrendingUp className="w-7 h-7 text-emerald-400" />,
       };
     }
     if (rec === 'HOLD') {
       return {
-        bg: 'from-blue-900/90 via-indigo-900/80 to-slate-900',
+        bg: 'from-blue-950/90 via-slate-900 to-indigo-950/80',
         badgeBg: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-        accentColor: 'text-blue-400',
-        icon: <Clock className="w-8 h-8 text-blue-400" />,
-        label: 'STRATEGIC HOLD RECOMMENDATION',
+        badgeText: '⏳ STRATEGIC HOLD',
+        icon: <Clock className="w-7 h-7 text-blue-400" />,
       };
     }
     return {
-      bg: 'from-slate-800 via-gray-900 to-slate-950',
+      bg: 'from-slate-900 via-gray-900 to-slate-950',
       badgeBg: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-      accentColor: 'text-gray-300',
-      icon: <ShieldCheck className="w-8 h-8 text-gray-300" />,
-      label: 'MARKET RECOMMENDATION',
+      badgeText: '📦 SELL NOW',
+      icon: <ShieldCheck className="w-7 h-7 text-gray-300" />,
     };
   };
 
-  const style = getBannerStyle(
-    decision.finalRecommendation,
-    decision.riskOverrideApplied
-  );
+  const style = getStyle();
 
-  const formatRecommendationTitle = (rec: string) => {
+  const getTitle = () => {
+    const rec = String(decision.finalRecommendation);
     switch (rec) {
       case 'SELL_EARLY_DUE_TO_RISK':
-        return 'SELL EARLY DUE TO RISK';
+        return 'Sell Early due to Weather Risk';
       case 'SELL_AT_RECOMMENDED_MANDI':
-        return `SELL AT ${decision.recommendedMandi?.mandiName.toUpperCase() || 'RECOMMENDED MANDI'}`;
+        return `Sell at ${decision.recommendedMandi?.mandiName || 'Recommended Market'}`;
       case 'HOLD':
-        return 'HOLD CROP FOR EXPECTED PEAK PRICE';
+        return 'Hold Crop for Peak Price';
       case 'AVOID_MANDI_OR_ROUTE':
-        return 'AVOID DANGEROUS TRANSIT CORRIDOR';
+        return 'Avoid Transit Corridor (High Risk)';
       case 'SELL_NOW':
-        return 'SELL NOW AT LOCAL APMC';
+        return 'Sell Now at Local APMC';
       default:
         return rec.replace(/_/g, ' ');
     }
@@ -82,47 +85,71 @@ export const RecommendationBanner: React.FC<RecommendationBannerProps> = ({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${style.bg} border border-white/10 p-6 md:p-8 text-white shadow-2xl backdrop-blur-md`}
+      className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${style.bg} border border-white/10 p-5 md:p-6 text-white shadow-xl`}
     >
-      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-3 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border tracking-wider uppercase ${style.badgeBg}`}
-            >
-              {style.label}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-2.5 max-w-2xl">
+          {/* Status Badges Row */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className={`px-2.5 py-0.5 rounded-full font-bold border ${style.badgeBg}`}>
+              {style.badgeText}
             </span>
 
-            {decision.riskOverrideApplied && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/30 text-amber-200 border border-amber-500/40 animate-pulse">
+            {isRiskOverride && (
+              <span className="px-2 py-0.5 rounded-full font-semibold bg-amber-500/20 text-amber-200 border border-amber-500/30 flex items-center gap-1">
                 <Zap className="w-3 h-3 text-amber-300" />
-                Base Decision ({decision.baseDecision}) Overridden
+                Base Decision (HOLD) Overridden
               </span>
             )}
 
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-gray-300 border border-white/10">
-              Confidence: {Math.round(decision.decisionConfidence * 100)}%
+            {isSevereWeather && (
+              <span className="px-2 py-0.5 rounded-full font-semibold bg-rose-500/20 text-rose-200 border border-rose-500/30 flex items-center gap-1">
+                <CloudRain className="w-3 h-3 text-rose-300" />
+                Heavy Rain Alert ({weather.classification})
+              </span>
+            )}
+
+            <span className="text-gray-400 ml-auto md:ml-0">
+              Confidence: <strong>{Math.round(decision.decisionConfidence * 100)}%</strong>
             </span>
           </div>
 
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-            {formatRecommendationTitle(decision.finalRecommendation)}
+          {/* Main Action Title */}
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
+            {getTitle()}
           </h1>
 
-          <p className="text-sm md:text-base text-gray-200 leading-relaxed">
+          {/* Plain Human Readable Reason */}
+          <p className="text-xs md:text-sm text-gray-300 leading-relaxed">
             {decision.humanReadableReason}
           </p>
-
-          {decision.recommendedMandi && (
-            <div className="flex items-center gap-2 text-xs font-medium text-emerald-300 bg-black/30 w-fit px-3 py-1.5 rounded-lg border border-white/10">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Target Market: {decision.recommendedMandi.mandiName}</span>
-            </div>
-          )}
         </div>
 
-        <div className="flex-shrink-0 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hidden sm:flex items-center justify-center">
-          {style.icon}
+        {/* Quick Decision Snapshot Pills */}
+        <div className="grid grid-cols-2 md:grid-cols-1 gap-2.5 min-w-[200px]">
+          {decision.recommendedMandi && (
+            <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <div>
+                <span className="text-[10px] text-gray-400 block uppercase">Target Market</span>
+                <span className="text-xs font-bold text-white line-clamp-1">
+                  {decision.recommendedMandi.mandiName}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {topMandi && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-2.5 flex items-center gap-2">
+              <IndianRupee className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <div>
+                <span className="text-[10px] text-emerald-300 block uppercase">Risk-Adjusted Return</span>
+                <span className="text-sm font-black text-emerald-300">
+                  ₹{topMandi.riskAdjustedReturn.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

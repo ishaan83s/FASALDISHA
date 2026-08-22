@@ -1,12 +1,13 @@
 """
-Dynamic Risk Assessment & Perishability Calculation Service.
-SSOT Reference: 03_DECISION_ENGINE_SSOT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
+Hybrid Data-Science & Domain Risk Assessment Service.
+Tutor & SSOT Reference: 70% Data-Science Model-Driven (Forecast Volatility, Uncertainty, Distance Decay) 
+                     + 30% Domain Logic (Perishability Shelf-Life & Severe Weather Overrides).
 """
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from app.schemas.weather import WeatherSignal
 from app.schemas.common import PerishabilityClass, RiskLevel
 from app.schemas.analysis import RiskSummary
-from app.config.constants import RISK_WEIGHTS
+from app.schemas.forecast import ForecastOutput
 
 
 class RiskService:
@@ -16,38 +17,52 @@ class RiskService:
         distance_km: float,
         perishability_class: PerishabilityClass,
         forecast_confidence: float,
+        forecast: Optional[ForecastOutput] = None,
     ) -> Tuple[float, RiskLevel, List[str]]:
         """
-        Calculates a composite risk score (0-100) for a candidate mandi.
-        Considers weather, transport distance, perishability urgency, and forecast uncertainty.
+        Calculates a hybrid risk score (0-100) combining:
+        - 70% Data-Science / Model-Driven Risk: Price Forecast Volatility, ML Residual Uncertainty, Spatial Decay
+        - 30% Domain / Human Safety Rules: Crop Shelf-Life Urgency, Severe Meteorological Disaster Alert
         """
         factors: List[str] = []
 
-        # 1. Weather component (0-100)
-        if weather_signal.impact_level == RiskLevel.CRITICAL:
-            weather_score = 95.0
-            factors.append("Critical severe weather alert in area")
-        elif weather_signal.impact_level == RiskLevel.HIGH:
-            weather_score = 80.0
-            factors.append("High weather risk / rainfall affecting transit")
-        elif weather_signal.impact_level == RiskLevel.MODERATE:
-            weather_score = 45.0
-            factors.append("Moderate weather conditions")
+        # =========================================================================
+        # 1. DATA-SCIENCE / MODEL-DRIVEN PILLAR (70% WEIGHT)
+        # =========================================================================
+        
+        # A. Forecast Price Volatility (ML output variance)
+        if forecast and forecast.daily_forecast and len(forecast.daily_forecast) > 1:
+            prices = [d.predicted_price for d in forecast.daily_forecast]
+            avg_p = sum(prices) / max(len(prices), 1)
+            volatility_pct = ((max(prices) - min(prices)) / max(avg_p, 1.0)) * 100.0
+            volatility_score = min(volatility_pct * 8.0, 100.0)
+            if volatility_pct >= 5.0:
+                factors.append(f"ML forecast volatility ({volatility_pct:.1f}%) indicates market price dispersion")
         else:
-            weather_score = 15.0
+            volatility_score = 25.0
 
-        # 2. Official alert component (0-100)
-        has_active_events = len(weather_signal.events) > 0
-        alert_score = 80.0 if has_active_events and weather_signal.impact_level in [RiskLevel.HIGH, RiskLevel.CRITICAL] else 10.0
-        if has_active_events:
-            factors.append(f"Active meteorological event: {weather_signal.events[0].event_type}")
+        # B. ML Model Residual Uncertainty (1 - confidence)
+        model_uncertainty_score = max(0.0, min(100.0, (1.0 - forecast_confidence) * 100.0))
+        if forecast_confidence < 0.75:
+            factors.append(f"Model uncertainty penalty (Confidence: {int(forecast_confidence*100)}%)")
 
-        # 3. Transport distance risk (0-100)
-        transport_score = min(distance_km / 150.0, 1.0) * 100.0
+        # C. Spatial Transport Decay Risk
+        spatial_decay_score = min(distance_km / 150.0, 1.0) * 100.0
         if distance_km > 75.0:
-            factors.append(f"Transit distance ({distance_km} km) adds logistics risk")
+            factors.append(f"Logistics transit distance ({distance_km:.1f} km) adds route friction")
 
-        # 4. Perishability urgency (0-100)
+        # Composite Data-Science Score (0-100)
+        ds_score = (
+            0.40 * volatility_score
+            + 0.35 * model_uncertainty_score
+            + 0.25 * spatial_decay_score
+        )
+
+        # =========================================================================
+        # 2. DOMAIN / HUMAN-SAFETY POLICY PILLAR (30% WEIGHT)
+        # =========================================================================
+
+        # A. Crop Perishability Shelf-Life Urgency
         if perishability_class == PerishabilityClass.HIGHLY_PERISHABLE:
             perishability_score = 85.0
             factors.append("Highly perishable commodity requires expedited market routing")
@@ -58,21 +73,35 @@ class RiskService:
             perishability_score = 15.0
             factors.append("Non-perishable commodity with flexible holding capability")
 
-        # 5. Model uncertainty (0-100)
-        model_uncertainty_score = max(0.0, min(100.0, (1.0 - forecast_confidence) * 100.0))
+        # B. Severe Meteorological Alert Severity
+        if weather_signal.impact_level == RiskLevel.CRITICAL:
+            weather_score = 95.0
+            factors.append("Critical severe weather alert in area")
+        elif weather_signal.impact_level == RiskLevel.HIGH:
+            weather_score = 80.0
+            factors.append("High weather risk / rainfall affecting transit")
+        elif weather_signal.impact_level == RiskLevel.MODERATE:
+            weather_score = 45.0
+        else:
+            weather_score = 15.0
 
-        # Weighted calculation from constants
-        w = RISK_WEIGHTS
-        risk_score = (
-            w["weather"] * weather_score
-            + w["official_alert"] * alert_score
-            + w["transport"] * transport_score
-            + w["perishability"] * perishability_score
-            + w["model_uncertainty"] * model_uncertainty_score
-        )
-        risk_score = round(max(0.0, min(100.0, risk_score)), 1)
+        # Composite Domain Score (0-100)
+        domain_score = 0.50 * perishability_score + 0.50 * weather_score
 
-        # Risk band assignment
+        # =========================================================================
+        # 3. HYBRID SYNTHESIS (70% Data-Science + 30% Domain)
+        # =========================================================================
+        risk_score = round(0.70 * ds_score + 0.30 * domain_score, 1)
+
+        # Environmental Disaster Floor: Active high/critical weather alerts enforce a safety floor
+        if weather_signal.impact_level == RiskLevel.CRITICAL:
+            risk_score = max(risk_score, 80.0)
+        elif weather_signal.impact_level == RiskLevel.HIGH:
+            risk_score = max(risk_score, 55.0)
+
+        risk_score = max(0.0, min(100.0, risk_score))
+
+        # Risk band categorization
         if risk_score <= 25.0:
             risk_level = RiskLevel.LOW
         elif risk_score <= 50.0:
@@ -89,13 +118,15 @@ class RiskService:
         weather_signal: WeatherSignal,
         perishability_class: PerishabilityClass,
         forecast_confidence: float,
+        forecast: Optional[ForecastOutput] = None,
     ) -> RiskSummary:
-        """Build overall risk summary at the farmer origin context."""
+        """Build overall risk summary at origin using the hybrid model."""
         score, level, factors = RiskService.calculate_mandi_risk(
             weather_signal=weather_signal,
             distance_km=10.0,
             perishability_class=perishability_class,
             forecast_confidence=forecast_confidence,
+            forecast=forecast,
         )
         return RiskSummary(
             overall_risk_score=score,

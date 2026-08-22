@@ -131,6 +131,7 @@ class AnalysisService:
                 distance_km=dist_km,
                 perishability_class=commodity.perishability_class,
                 forecast_confidence=forecast.forecast_confidence,
+                forecast=forecast,
             )
 
             raw_candidates.append({
@@ -174,6 +175,7 @@ class AnalysisService:
             weather_signal=origin_weather,
             perishability_class=commodity.perishability_class,
             forecast_confidence=top_forecast.forecast_confidence,
+            forecast=top_forecast,
         )
 
         # Step 7: Evaluate Explainable Decision

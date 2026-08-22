@@ -99,3 +99,4 @@ ml/model_store/*.onnx
 *.sqlite3
 backend/app/db/*.db
 backend/app/db/*.sqlite3
+/Users/ishaan/FASALDISHA/ssot

@@ -250,7 +250,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
                   id="quantity-input"
                   type="number"
                   min="0.1"
-                  step="0.5"
+                  step="0.1"
                   value={quantityQuintals}
                   onChange={(e) => setQuantityQuintals(parseFloat(e.target.value) || 0)}
                   className="w-full px-3.5 py-2.5 bg-earth-50/70 dark:bg-slate-900/80 border border-earth-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-agri-500 focus:bg-white dark:focus:bg-[#151c24] transition"

@@ -151,6 +151,19 @@ def _try_live_xgboost_inference(
         df_feat = pd.DataFrame(rows)[features]
         raw_preds = model.predict(df_feat)
 
+        print("\n" + "="*50)
+        print("LIVE XGBOOST DEBUG")
+        print("="*50)
+        print(f"Model loaded: {'YES' if model is not None else 'NO'}")
+        print(f"Encoders loaded: {'YES' if encoders is not None else 'NO'}")
+        print(f"Features loaded: {'YES' if features is not None else 'NO'} ({len(features)} features)")
+        print(f"Target Commodity: {commodity_id} -> {comm_title} (Category: {crop_cat})")
+        print(f"Encoder Validation: PASS (State: {enc_state}, Dist: {enc_dist}, Mandi: {enc_mandi})")
+        print(f"DataFrame shape: {df_feat.shape}")
+        print(f"model.predict(): EXECUTED ({len(raw_preds)} daily horizons)")
+        print(f"Raw predictions: {[round(float(x), 2) for x in raw_preds]}")
+        print("="*50 + "\n")
+
         # Scale predictions to reflect user's current price while preserving model trend
         base_pred = float(raw_preds[0])
         scale_factor = base_p / max(base_pred, 1.0) if abs(base_p - base_pred) > 5.0 else 1.0
@@ -193,7 +206,14 @@ def _try_live_xgboost_inference(
             history_source_label="Trained XGBoost Regressor (ml/models/mandi_price_model.pkl)",
             forecast_scope=ForecastScope.DIRECT_MODEL,
         )
-    except Exception:
+    except Exception as e:
+        print("\n" + "="*50)
+        print("LIVE XGBOOST DEBUG EXCEPTION")
+        print("="*50)
+        print(f"Error during live inference: {e}")
+        import traceback
+        traceback.print_exc()
+        print("="*50 + "\n")
         return None
 
 

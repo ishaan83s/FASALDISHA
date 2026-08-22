@@ -50,10 +50,12 @@ class DecisionEngine:
         
         travel_margin = (top_return - local_return) / max(local_return, 1.0) if local_mandi else 0.0
         
-        # Check forecast gain over current price
+        # Check forecast gain over current price (including peak horizon gain)
         curr_price = top_candidate.current_price
         expected_7d = top_candidate.forecast.forecast_7_day
-        forecast_gain = (expected_7d - curr_price) / max(curr_price, 1.0)
+        peak_price = top_candidate.forecast.expected_peak_price
+        best_future_price = max(expected_7d, peak_price)
+        forecast_gain = (best_future_price - curr_price) / max(curr_price, 1.0)
 
         is_perishable = commodity.perishability_class in [
             PerishabilityClass.HIGHLY_PERISHABLE,
@@ -63,7 +65,7 @@ class DecisionEngine:
         if local_mandi and top_candidate.mandi.mandi_id != local_mandi.mandi.mandi_id and travel_margin >= TRAVEL_SIGNIFICANCE_THRESHOLD:
             base_decision = BaseDecision.TRAVEL
             reason_codes.append("TRAVEL_GAIN_ABOVE_THRESHOLD")
-        elif forecast_gain >= HOLD_SIGNIFICANCE_THRESHOLD and commodity.perishability_class != PerishabilityClass.HIGHLY_PERISHABLE:
+        elif (forecast_gain >= HOLD_SIGNIFICANCE_THRESHOLD or top_candidate.forecast.peak_alert) and commodity.perishability_class != PerishabilityClass.HIGHLY_PERISHABLE:
             base_decision = BaseDecision.HOLD
             reason_codes.append("HOLD_GAIN_ABOVE_THRESHOLD")
         else:
@@ -75,19 +77,19 @@ class DecisionEngine:
         final_rec = FinalRecommendation.SELL_NOW
         human_reason = ""
 
-        # Case A: HOLD with elevated weather/alert risk -> SELL_EARLY_DUE_TO_RISK
-        if base_decision == BaseDecision.HOLD and (
+        # Case A: Perishable crop with elevated weather/alert risk -> SELL_EARLY_DUE_TO_RISK
+        if (base_decision == BaseDecision.HOLD or is_perishable) and (
             risk_summary.risk_level in [RiskLevel.HIGH, RiskLevel.CRITICAL]
             or risk_summary.overall_risk_score >= HIGH_RISK_OVERRIDE_THRESHOLD
         ):
+            base_decision = BaseDecision.HOLD
             risk_override_applied = True
             final_rec = FinalRecommendation.SELL_EARLY_DUE_TO_RISK
             reason_codes.append("WEATHER_RISK_HIGH")
             reason_codes.append("RISK_OVERRIDE_SELL_EARLY")
             human_reason = (
-                f"Although a 7-day price gain (+{round(forecast_gain*100, 1)}%) was forecasted, "
-                f"high meteorological/transit risk (Score: {risk_summary.overall_risk_score}/100) overrides holding. "
-                f"Recommend selling early at {top_candidate.mandi.mandi_name} to prevent spoilage and logistical loss."
+                f"Holding {commodity.commodity_name} is overridden due to active severe weather/waterlogging alerts. "
+                f"Recommended to SELL EARLY at {top_candidate.mandi.mandi_name} to prevent crop spoilage."
             )
 
         # Case B: TRAVEL with severe top mandi risk -> Find safer alternative or AVOID

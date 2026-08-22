@@ -99,3 +99,5 @@ ml/model_store/*.onnx
 *.sqlite3
 backend/app/db/*.db
 backend/app/db/*.sqlite3
+ssot
+FASALDISHA_DEMO_FLOW_AND_JUDGE_PLAYBOOK.pdf

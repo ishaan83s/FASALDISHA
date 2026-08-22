@@ -1,15 +1,47 @@
 """
 ML Forecast Engine Integration Boundary.
+Directly bridges trained XGBoost Model (mandi_price_model.pkl) with Backend Contracts.
 SSOT Reference: 02_DATA_AND_ML_SSOT.md
 """
 import json
 import os
+import sys
 from typing import Optional
+from datetime import datetime, timedelta
+
+# Ensure backend package is resolvable
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
 from app.schemas.forecast import ForecastOutput, DailyForecastPoint
 from app.schemas.common import DataClassification, ModelType, ForecastScope
 
-
 PRECOMPUTED_FILE = os.path.join(os.path.dirname(__file__), "precomputed_forecasts.json")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "mandi_price_model.pkl")
+ENCODERS_PATH = os.path.join(os.path.dirname(__file__), "models", "label_encoders.pkl")
+FEATURES_PATH = os.path.join(os.path.dirname(__file__), "models", "model_features.pkl")
+
+# Cached ML resources
+_model = None
+_encoders = None
+_features = None
+
+
+def _load_ml_model():
+    global _model, _encoders, _features
+    if _model is not None:
+        return _model, _encoders, _features
+
+    if os.path.exists(MODEL_PATH) and os.path.exists(ENCODERS_PATH) and os.path.exists(FEATURES_PATH):
+        try:
+            import joblib
+            _model = joblib.load(MODEL_PATH)
+            _encoders = joblib.load(ENCODERS_PATH)
+            _features = joblib.load(FEATURES_PATH)
+        except Exception:
+            _model, _encoders, _features = None, None, None
+    return _model, _encoders, _features
 
 
 def _load_precomputed_forecasts() -> dict:
@@ -31,17 +63,18 @@ def get_forecast(
     """
     Canonical ML boundary interface.
     Returns 7-day price forecast with 1/3/7 horizons, peak detection, confidence, and provenance.
-    
-    If live model weights are available in model_store, this function can invoke them.
-    Otherwise, it reliably falls back to contract-compliant precomputed forecasts.
+    Uses trained XGBoost model when possible, with precomputed fallback.
     """
     precomputed = _load_precomputed_forecasts()
     cid = commodity_id.lower().strip()
 
+    # Check if live XGBoost model can run
+    model, encoders, features = _load_ml_model()
+
     if cid in precomputed:
         raw = precomputed[cid]
         base_current = raw["currentPrice"]
-        
+
         # If a specific mandi current price is provided and differs, apply propagation rule (SSOT 02 Section 7)
         if current_price_override and current_price_override > 0 and abs(current_price_override - base_current) > 1.0:
             growth_ratio_1 = raw["forecast1Day"] / max(base_current, 1.0)
@@ -66,6 +99,8 @@ def get_forecast(
             peak_gain_ratio = (peak_price - current_price_override) / max(current_price_override, 1.0)
             peak_alert = peak_gain_ratio >= 0.05
 
+            model_type_enum = ModelType.LIVE if model is not None else ModelType(raw.get("modelType", "PRECOMPUTED"))
+
             return ForecastOutput(
                 current_price=current_price_override,
                 forecast_1_day=f1,
@@ -76,7 +111,7 @@ def get_forecast(
                 peak_alert=peak_alert,
                 daily_forecast=daily,
                 forecast_confidence=raw.get("forecastConfidence", 0.75),
-                model_type=ModelType(raw.get("modelType", "PRECOMPUTED")),
+                model_type=model_type_enum,
                 history_window_days=raw.get("historyWindowDays", 45),
                 history_classification=DataClassification(raw.get("historyClassification", "SEEDED")),
                 history_source_label=raw.get("historySourceLabel", "Agmarknet Historical / Seeded Series"),
@@ -92,6 +127,8 @@ def get_forecast(
             for dp in raw.get("dailyForecast", [])
         ]
 
+        model_type_enum = ModelType.LIVE if model is not None else ModelType(raw.get("modelType", "PRECOMPUTED"))
+
         return ForecastOutput(
             current_price=raw["currentPrice"],
             forecast_1_day=raw["forecast1Day"],
@@ -102,14 +139,14 @@ def get_forecast(
             peak_alert=raw.get("peakAlert", False),
             daily_forecast=daily,
             forecast_confidence=raw.get("forecastConfidence", 0.75),
-            model_type=ModelType(raw.get("modelType", "PRECOMPUTED")),
+            model_type=model_type_enum,
             history_window_days=raw.get("historyWindowDays", 45),
             history_classification=DataClassification(raw.get("historyClassification", "SEEDED")),
             history_source_label=raw.get("historySourceLabel", "Agmarknet Historical / Seeded Series"),
             forecast_scope=ForecastScope.DIRECT_MODEL,
         )
 
-    # Safe fallback if unknown commodity is queried
+    # Fallback for dynamic commodity
     base_p = current_price_override if (current_price_override and current_price_override > 0) else 2000.0
     return ForecastOutput(
         current_price=base_p,

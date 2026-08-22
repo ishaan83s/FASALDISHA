@@ -1,13 +1,13 @@
 """
 Weather & Meteorological Alert Service.
-SSOT Reference: 02_DATA_AND_ML_SSOT.md, 03_DECISION_ENGINE_SSOT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
+SSOT Reference: 02_DATA_AND_ML_SSOT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
 """
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.db.models import WeatherEventModel
 from app.schemas.weather import WeatherSignal, WeatherEventDetail
 from app.schemas.common import DataClassification, RiskLevel
-from app.config.constants import SEEDED_RISK_OVERRIDE_SCENARIO_ENABLED
+from app.config.settings import settings
 
 
 class WeatherService:
@@ -15,58 +15,49 @@ class WeatherService:
     def get_weather_signal(
         latitude: float,
         longitude: float,
-        district_id: Optional[str] = None,
         state_id: Optional[str] = None,
+        district_id: Optional[str] = None,
         db: Optional[Session] = None,
-        force_scenario: Optional[str] = None,
+        force_seeded_scenario: Optional[bool] = None,
     ) -> WeatherSignal:
         """
-        Retrieves weather status and alerts for the specified location.
-        Supports honest classification: REAL, SEEDED, or UNAVAILABLE.
-        Includes deterministic SEEDED severe risk scenario for Judge Proof.
+        Retrieves active weather impact and meteorological alerts.
+        Prioritizes:
+        1. Database registered alerts / live meteorological events
+        2. Deterministic seeded severe weather scenario (for judge demonstration when configured)
+        3. Clear UNAVAILABLE / Normal baseline status
         """
-        # Force scenario override for testing/demo
-        if force_scenario == "UNAVAILABLE":
-            return WeatherSignal(
-                status="UNAVAILABLE",
-                impact_level=RiskLevel.LOW,
-                events=[],
-                classification=DataClassification.UNAVAILABLE,
-                source_label="Weather Service Signal Unavailable / Offline",
-            )
+        use_seeded_demo = (
+            force_seeded_scenario
+            if force_seeded_scenario is not None
+            else settings.SEEDED_RISK_OVERRIDE_SCENARIO_ENABLED
+        )
 
-        if force_scenario == "NORMAL":
-            return WeatherSignal(
-                status="ACTIVE",
-                impact_level=RiskLevel.LOW,
-                events=[],
-                classification=DataClassification.SEEDED,
-                source_label="Baseline Agro-Meteorological Advisory (Normal Conditions)",
-            )
-
-        # Check for active seeded weather events in database
+        # Check DB for active weather events in proximity
         if db:
-            query = db.query(WeatherEventModel).filter(WeatherEventModel.active == True)
-            
-            # Match by district or state if provided
+            event = None
             if district_id:
-                event = query.filter(WeatherEventModel.district_id == district_id.lower().strip()).first()
-            elif state_id:
-                event = query.filter(WeatherEventModel.state_id == state_id.lower().strip()).first()
-            else:
-                event = query.first()
+                event = (
+                    db.query(WeatherEventModel)
+                    .filter(
+                        WeatherEventModel.district_id == district_id.lower().strip(),
+                        WeatherEventModel.active == True,
+                    )
+                    .first()
+                )
 
             if event:
+                sev = RiskLevel(event.severity) if event.severity in RiskLevel.__members__ else RiskLevel.HIGH
                 return WeatherSignal(
                     status="ACTIVE",
-                    impact_level=RiskLevel(event.severity),
+                    impact_level=sev,
                     events=[
                         WeatherEventDetail(
                             event_id=event.event_id,
                             event_type=event.event_type,
-                            severity=RiskLevel(event.severity),
+                            severity=sev,
                             event_date=event.event_date,
-                            description=f"Active alert: {event.event_type.replace('_', ' ').title()}",
+                            description=f"Meteorological Alert: {event.event_type} in {district_id}",
                             classification=DataClassification(event.classification),
                             source_label=event.source_label,
                         )
@@ -75,35 +66,31 @@ class WeatherService:
                     source_label=event.source_label,
                 )
 
-        # Deterministic Pune demo seeded scenario fallback if enabled in constants
-        if SEEDED_RISK_OVERRIDE_SCENARIO_ENABLED:
-            # If coordinates are around Pune (lat ~18.5, lon ~73.8) or district is pune
-            if (district_id and district_id.lower() == "pune") or (
-                18.0 <= latitude <= 19.5 and 73.0 <= longitude <= 74.5
-            ):
-                return WeatherSignal(
-                    status="ACTIVE",
-                    impact_level=RiskLevel.HIGH,
-                    events=[
-                        WeatherEventDetail(
-                            event_id="demo_pune_rain_event",
-                            event_type="HEAVY_RAIN_AND_WATERLOGGING",
-                            severity=RiskLevel.HIGH,
-                            event_date="2026-08-21",
-                            description="Severe waterlogging and localized flash flooding reported near transport corridors",
-                            classification=DataClassification.SEEDED,
-                            source_label="Deterministic seeded severe weather scenario for judge demo",
-                        )
-                    ],
-                    classification=DataClassification.SEEDED,
-                    source_label="Deterministic seeded severe weather scenario for judge demo",
-                )
+        # If deterministic demo scenario is enabled and in Pune district
+        if use_seeded_demo and district_id and district_id.lower().strip() == "pune":
+            return WeatherSignal(
+                status="ACTIVE",
+                impact_level=RiskLevel.HIGH,
+                events=[
+                    WeatherEventDetail(
+                        event_id="demo_pune_waterlogging",
+                        event_type="UNSEASONAL_HEAVY_RAINFALL",
+                        severity=RiskLevel.HIGH,
+                        event_date="2026-08-21",
+                        description="Severe unseasonal rain leading to mandi waterlogging and transit delays",
+                        classification=DataClassification.SEEDED,
+                        source_label="Deterministic Seeded Weather Fixture (Judge Demo)",
+                    )
+                ],
+                classification=DataClassification.SEEDED,
+                source_label="Deterministic Seeded Weather Fixture (Judge Demo)",
+            )
 
-        # Baseline active normal condition
+        # Default normal baseline
         return WeatherSignal(
             status="ACTIVE",
             impact_level=RiskLevel.LOW,
             events=[],
             classification=DataClassification.SEEDED,
-            source_label="Baseline Agro-Meteorological Advisory (Normal Conditions)",
+            source_label="IMD Baseline Agro-Meteorological Advisory (Normal)",
         )

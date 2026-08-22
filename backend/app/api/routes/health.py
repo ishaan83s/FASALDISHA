@@ -1,24 +1,29 @@
 """
-Health Check Endpoint.
-SSOT Reference: 05_API_CONTRACT.md
+Health Check Route.
+SSOT Reference: 01_SYSTEM_ARCHITECTURE.md, 08_VERTICAL_SLICE_PLAN.md
 """
-from fastapi import APIRouter
-from app.schemas.common import APIEnvelope
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from app.db.session import get_db
 
 router = APIRouter(tags=["Health"])
 
 
-@router.get("/health", response_model=APIEnvelope[dict])
-def health_check():
-    """Returns application health status and version."""
-    return APIEnvelope(
-        success=True,
-        data={
-            "status": "healthy",
-            "app": "FasalDisha-Backend",
-            "version": "2.0.0",
-            "round": 2,
-            "architecture": "Modular Single-Process FastAPI",
-        },
-        error=None,
-    )
+@router.get("/health")
+def health_check(db: Session = Depends(get_db)):
+    """Health check endpoint for readiness and liveness verification."""
+    db_status = "healthy"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    return {
+        "status": "healthy" if db_status == "healthy" else "degraded",
+        "service": "FasalDisha-Backend",
+        "version": "2.1.0",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": db_status,
+    }

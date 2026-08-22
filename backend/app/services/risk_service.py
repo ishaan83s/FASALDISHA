@@ -1,102 +1,105 @@
 """
-Risk Assessment and Risk-Adjusted Return Calculation Service.
-SSOT Reference: 02_DATA_AND_ML_SSOT.md, 03_DECISION_ENGINE_SSOT.md
+Dynamic Risk Assessment & Perishability Calculation Service.
+SSOT Reference: 03_DECISION_ENGINE_SSOT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
 """
-from typing import List, Tuple, Optional
-from sqlalchemy.orm import Session
-from app.schemas.geography import Commodity
+from typing import Tuple, List
 from app.schemas.weather import WeatherSignal
-from app.schemas.forecast import ForecastOutput
-from app.schemas.common import RiskLevel, PerishabilityClass
-from app.config.constants import RISK_WEIGHTS, RISK_PENALTY_FACTOR
+from app.schemas.common import PerishabilityClass, RiskLevel
+from app.schemas.analysis import RiskSummary
+from app.config.constants import RISK_WEIGHTS
 
 
 class RiskService:
     @staticmethod
     def calculate_mandi_risk(
-        commodity: Commodity,
-        weather: WeatherSignal,
+        weather_signal: WeatherSignal,
         distance_km: float,
-        forecast: ForecastOutput,
-        db: Optional[Session] = None,
+        perishability_class: PerishabilityClass,
+        forecast_confidence: float,
     ) -> Tuple[float, RiskLevel, List[str]]:
         """
-        Calculates composite mandi risk score (0-100), risk level band, and risk factors.
+        Calculates a composite risk score (0-100) for a candidate mandi.
+        Considers weather, transport distance, perishability urgency, and forecast uncertainty.
         """
-        risk_factors: List[str] = []
+        factors: List[str] = []
 
         # 1. Weather component (0-100)
-        if weather.status == "UNAVAILABLE":
-            w_score = 15.0
-        elif weather.impact_level == RiskLevel.CRITICAL:
-            w_score = 90.0
-            risk_factors.append("Critical weather disruption active")
-        elif weather.impact_level == RiskLevel.HIGH:
-            w_score = 75.0
-            risk_factors.append("Heavy rain / waterlogging alert active")
-        elif weather.impact_level == RiskLevel.MODERATE:
-            w_score = 45.0
-            risk_factors.append("Moderate weather caution in region")
+        if weather_signal.impact_level == RiskLevel.CRITICAL:
+            weather_score = 95.0
+            factors.append("Critical severe weather alert in area")
+        elif weather_signal.impact_level == RiskLevel.HIGH:
+            weather_score = 80.0
+            factors.append("High weather risk / rainfall affecting transit")
+        elif weather_signal.impact_level == RiskLevel.MODERATE:
+            weather_score = 45.0
+            factors.append("Moderate weather conditions")
         else:
-            w_score = 15.0
+            weather_score = 15.0
 
         # 2. Official alert component (0-100)
-        # Default baseline unless an alert is present in weather events
-        a_score = 15.0
-        if any(e.severity in [RiskLevel.HIGH, RiskLevel.CRITICAL] for e in weather.events):
-            a_score = 80.0
-            risk_factors.append("Official meteorological advisory triggered")
+        has_active_events = len(weather_signal.events) > 0
+        alert_score = 80.0 if has_active_events and weather_signal.impact_level in [RiskLevel.HIGH, RiskLevel.CRITICAL] else 10.0
+        if has_active_events:
+            factors.append(f"Active meteorological event: {weather_signal.events[0].event_type}")
 
         # 3. Transport distance risk (0-100)
-        t_score = min(max((distance_km / 2.0), 10.0), 85.0)
+        transport_score = min(distance_km / 150.0, 1.0) * 100.0
         if distance_km > 75.0:
-            risk_factors.append(f"Long transit distance ({distance_km:.1f} km)")
+            factors.append(f"Transit distance ({distance_km} km) adds logistics risk")
 
-        # 4. Perishability holding / spoilage risk (0-100)
-        if commodity.perishability_class == PerishabilityClass.HIGHLY_PERISHABLE:
-            p_score = 80.0
-            risk_factors.append("Highly perishable crop: High spoilage urgency")
-        elif commodity.perishability_class == PerishabilityClass.MODERATELY_PERISHABLE:
-            p_score = 45.0
-            risk_factors.append("Moderately perishable crop: Monitor storage conditions")
+        # 4. Perishability urgency (0-100)
+        if perishability_class == PerishabilityClass.HIGHLY_PERISHABLE:
+            perishability_score = 85.0
+            factors.append("Highly perishable commodity requires expedited market routing")
+        elif perishability_class == PerishabilityClass.MODERATELY_PERISHABLE:
+            perishability_score = 50.0
+            factors.append("Moderately perishable crop with limited holding window")
         else:
-            p_score = 15.0
+            perishability_score = 15.0
+            factors.append("Non-perishable commodity with flexible holding capability")
 
-        # 5. Model uncertainty risk (0-100)
-        u_score = max((1.0 - forecast.forecast_confidence) * 100.0, 10.0)
+        # 5. Model uncertainty (0-100)
+        model_uncertainty_score = max(0.0, min(100.0, (1.0 - forecast_confidence) * 100.0))
 
-        # Composite weighted risk score
+        # Weighted calculation from constants
+        w = RISK_WEIGHTS
         risk_score = (
-            RISK_WEIGHTS["weather"] * w_score
-            + RISK_WEIGHTS["official_alert"] * a_score
-            + RISK_WEIGHTS["transport"] * t_score
-            + RISK_WEIGHTS["perishability"] * p_score
-            + RISK_WEIGHTS["model_uncertainty"] * u_score
+            w["weather"] * weather_score
+            + w["official_alert"] * alert_score
+            + w["transport"] * transport_score
+            + w["perishability"] * perishability_score
+            + w["model_uncertainty"] * model_uncertainty_score
         )
-        risk_score = round(min(max(risk_score, 0.0), 100.0), 1)
+        risk_score = round(max(0.0, min(100.0, risk_score)), 1)
 
-        # Determine Risk Band
+        # Risk band assignment
         if risk_score <= 25.0:
-            level = RiskLevel.LOW
+            risk_level = RiskLevel.LOW
         elif risk_score <= 50.0:
-            level = RiskLevel.MODERATE
+            risk_level = RiskLevel.MODERATE
         elif risk_score <= 75.0:
-            level = RiskLevel.HIGH
+            risk_level = RiskLevel.HIGH
         else:
-            level = RiskLevel.CRITICAL
+            risk_level = RiskLevel.CRITICAL
 
-        return risk_score, level, risk_factors
+        return (risk_score, risk_level, factors)
 
     @staticmethod
-    def calculate_risk_adjusted_return(
-        net_return: float,
-        risk_score: float,
-    ) -> float:
-        """
-        Calculates risk-adjusted net return:
-        riskPenalty = netReturn * (riskScore / 100) * RISK_PENALTY_FACTOR
-        riskAdjustedReturn = netReturn - riskPenalty
-        """
-        risk_penalty = net_return * (risk_score / 100.0) * RISK_PENALTY_FACTOR
-        risk_adjusted_return = net_return - risk_penalty
-        return round(risk_adjusted_return, 2)
+    def build_risk_summary(
+        weather_signal: WeatherSignal,
+        perishability_class: PerishabilityClass,
+        forecast_confidence: float,
+    ) -> RiskSummary:
+        """Build overall risk summary at the farmer origin context."""
+        score, level, factors = RiskService.calculate_mandi_risk(
+            weather_signal=weather_signal,
+            distance_km=10.0,
+            perishability_class=perishability_class,
+            forecast_confidence=forecast_confidence,
+        )
+        return RiskSummary(
+            overall_risk_score=score,
+            risk_level=level,
+            data_completeness=1.0,
+            risk_factors=factors,
+        )

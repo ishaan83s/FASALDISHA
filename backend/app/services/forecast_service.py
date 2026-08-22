@@ -1,43 +1,37 @@
 """
-Forecast Integration Service: Bridges Backend to ML Engine.
+Forecast Service: Consumes ML Boundary via ForecastOutput Contract.
 SSOT Reference: 02_DATA_AND_ML_SSOT.md, 05_API_CONTRACT.md
 """
+import sys
+import os
 from typing import Optional
-from sqlalchemy.orm import Session
-from app.db.models import MandiPriceModel
 from app.schemas.forecast import ForecastOutput
-from ml.forecast_engine import get_forecast
+
+try:
+    from ml.forecast_engine import get_forecast as ml_get_forecast
+except ImportError:
+    # Resolve ml module from project root
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    from ml.forecast_engine import get_forecast as ml_get_forecast
 
 
 class ForecastService:
     @staticmethod
-    def get_forecast_for_mandi(
+    def get_forecast(
         commodity_id: str,
         mandi_id: Optional[str] = None,
-        db: Optional[Session] = None,
         as_of_date: Optional[str] = None,
+        current_price_override: Optional[float] = None,
     ) -> ForecastOutput:
         """
-        Retrieves ML price forecast for a specific commodity and mandi.
-        Pulls latest mandi baseline price if available, and invokes ML forecast engine.
+        Retrieves crop price forecast from ML module or contract-compliant precomputed fallback.
+        The backend consumes ForecastOutput without depending on internal ML algorithms.
         """
-        current_price = None
-        if db and mandi_id:
-            latest_price_record = (
-                db.query(MandiPriceModel)
-                .filter(
-                    MandiPriceModel.mandi_id == mandi_id,
-                    MandiPriceModel.commodity_id == commodity_id.lower().strip(),
-                )
-                .order_by(MandiPriceModel.price_date.desc())
-                .first()
-            )
-            if latest_price_record:
-                current_price = latest_price_record.modal_price
-
-        return get_forecast(
+        return ml_get_forecast(
             commodity_id=commodity_id,
             mandi_id=mandi_id,
             as_of_date=as_of_date,
-            current_price_override=current_price,
+            current_price_override=current_price_override,
         )

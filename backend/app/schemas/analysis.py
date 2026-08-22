@@ -81,8 +81,8 @@ class CandidateMandi(BaseSchema):
     risk_adjusted_return: float
     buyer_signal: BuyerSignal
     weather_impact: WeatherSignal
-    ranking_breakdown: Optional[RankingBreakdown] = None
-    ranking_score: float = 0.0
+    ranking_breakdown: RankingBreakdown
+    ranking_score: float
     data_classification: Dict[str, Any] = {}
 
 

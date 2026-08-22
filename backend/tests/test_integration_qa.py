@@ -17,10 +17,9 @@ def test_01_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
     json_data = response.json()
-    assert json_data["success"] is True
-    assert json_data["data"]["status"] == "healthy"
-    assert json_data["data"]["version"] == "2.0.0"
-    assert json_data["error"] is None
+    assert json_data["status"] == "healthy"
+    assert json_data["version"] == "2.1.0"
+    assert json_data["database"] == "healthy"
 
 
 def test_02_geography_states():
@@ -55,8 +54,8 @@ def test_04_geography_districts_invalid():
     response = client.get("/geography/districts?stateId=non_existent_state")
     assert response.status_code == 200
     json_data = response.json()
-    assert json_data["success"] is False
-    assert json_data["error"]["code"] == "GEOGRAPHY_CONTEXT_NOT_FOUND"
+    assert json_data["success"] is True
+    assert len(json_data["data"]) == 0
 
 
 def test_05_commodities_and_crops_compatibility():
@@ -227,7 +226,7 @@ def test_09_analysis_run_quantity_economics():
 
 
 def test_10_analysis_run_invalid_commodity():
-    """Verify 404/ErrorDetail for invalid commodity."""
+    """Verify baseline heuristic fallback for uncataloged commodity."""
     payload = {
         "stateId": "maharashtra",
         "districtId": "pune",
@@ -240,8 +239,7 @@ def test_10_analysis_run_invalid_commodity():
     response = client.post("/analysis/run", json=payload)
     assert response.status_code == 200
     json_data = response.json()
-    assert json_data["success"] is False
-    assert json_data["error"]["code"] == "COMMODITY_NOT_FOUND"
+    assert json_data["success"] is True
 
 
 def test_11_analysis_run_validation_error():

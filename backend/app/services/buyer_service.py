@@ -1,8 +1,8 @@
 """
 Synthetic Buyer Intelligence Service.
-SSOT Reference: 02_DATA_AND_ML_SSOT.md, 03_DECISION_ENGINE_SSOT.md, 05_API_CONTRACT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
+SSOT Reference: 03_DECISION_ENGINE_SSOT.md, 13_JUDGE_PROOF_AND_P0_ACCEPTANCE.md
 """
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.db.models import BuyerModel
 from app.schemas.analysis import BuyerSignal
@@ -18,11 +18,12 @@ class BuyerService:
         db: Optional[Session] = None,
     ) -> BuyerSignal:
         """
-        Aggregates synthetic buyer signals for candidate mandi + commodity.
-        All data is explicitly labeled SYNTHETIC per SSOT Honesty Rules.
+        Retrieves buyer signals for the candidate mandi from the synthetic dataset.
+        Honesty Rule: Explicitly tagged as SYNTHETIC in classification and sourceLabel.
         """
+        buyers = []
         if db:
-            buyers: List[BuyerModel] = (
+            buyers = (
                 db.query(BuyerModel)
                 .filter(
                     BuyerModel.mandi_id == mandi_id,
@@ -31,75 +32,50 @@ class BuyerService:
                 )
                 .all()
             )
-        else:
-            buyers = []
 
-        if buyers:
-            active_count = len(buyers)
-            avg_offer_strength = sum(b.offer_strength for b in buyers) / float(active_count)
-            avg_reliability = sum(b.reliability_score for b in buyers) / float(active_count)
+        active_count = len(buyers)
+        if active_count > 0:
+            avg_offer = sum(b.offer_strength for b in buyers) / active_count
+            avg_rel = sum(b.reliability_score for b in buyers) / active_count
 
-            # Demand score mapping
+            # Determine aggregate demand level
             demand_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
             for b in buyers:
-                dl = b.demand_level.upper()
-                if dl in demand_counts:
-                    demand_counts[dl] += 1
-                else:
-                    demand_counts["MEDIUM"] += 1
+                demand_counts[b.demand_level] = demand_counts.get(b.demand_level, 0) + 1
 
-            if demand_counts["HIGH"] >= demand_counts["MEDIUM"] and demand_counts["HIGH"] > demand_counts["LOW"]:
-                overall_demand = DemandLevel.HIGH
-                demand_score = 90.0
-            elif demand_counts["LOW"] > demand_counts["MEDIUM"] and demand_counts["LOW"] > demand_counts["HIGH"]:
-                overall_demand = DemandLevel.LOW
-                demand_score = 35.0
+            if demand_counts["HIGH"] >= demand_counts["MEDIUM"]:
+                dominant_demand = DemandLevel.HIGH
+            elif demand_counts["MEDIUM"] >= demand_counts["LOW"]:
+                dominant_demand = DemandLevel.MEDIUM
             else:
-                overall_demand = DemandLevel.MEDIUM
-                demand_score = 65.0
+                dominant_demand = DemandLevel.LOW
+        else:
+            # Deterministic heuristic fallback based on mandi/commodity hash
+            h = hash(mandi_id + commodity_id)
+            active_count = 2 + (h % 4)
+            avg_offer = 60.0 + (h % 25)
+            avg_rel = 70.0 + (h % 20)
+            dominant_demand = DemandLevel.MEDIUM if (h % 2 == 0) else DemandLevel.HIGH
 
-            # Availability score (up to 5 active buyers maxes out at 100)
-            availability_score = min(active_count * 20.0, 100.0)
+        # Map demand to numeric score (0-100)
+        demand_num = 95.0 if dominant_demand == DemandLevel.HIGH else (65.0 if dominant_demand == DemandLevel.MEDIUM else 35.0)
+        availability_score = min(active_count / 5.0, 1.0) * 100.0
 
-            # Composite buyer signal score (0-100)
-            buyer_signal_score = (
-                BUYER_SIGNAL_WEIGHTS["demand"] * demand_score
-                + BUYER_SIGNAL_WEIGHTS["availability"] * availability_score
-                + BUYER_SIGNAL_WEIGHTS["offer_strength"] * avg_offer_strength
-                + BUYER_SIGNAL_WEIGHTS["reliability"] * avg_reliability
-            )
-
-            return BuyerSignal(
-                active_buyer_count=active_count,
-                demand_level=overall_demand,
-                offer_strength=round(avg_offer_strength, 1),
-                reliability=round(avg_reliability, 1),
-                buyer_signal_score=round(buyer_signal_score, 1),
-                classification=DataClassification.SYNTHETIC,
-                source_label="Synthetic demo dataset",
-            )
-
-        # Deterministic synthetic fallback when db query is empty
-        # Generates deterministic values based on mandi_id hash
-        seed_val = abs(hash(mandi_id + commodity_id))
-        count = 2 + (seed_val % 4)
-        offer = 60.0 + (seed_val % 30)
-        rel = 70.0 + (seed_val % 25)
-        demand = DemandLevel.HIGH if (seed_val % 2 == 0) else DemandLevel.MEDIUM
-        d_score = 85.0 if demand == DemandLevel.HIGH else 60.0
-        b_score = (
-            BUYER_SIGNAL_WEIGHTS["demand"] * d_score
-            + BUYER_SIGNAL_WEIGHTS["availability"] * (count * 20.0)
-            + BUYER_SIGNAL_WEIGHTS["offer_strength"] * offer
-            + BUYER_SIGNAL_WEIGHTS["reliability"] * rel
+        # Weighted calculation from constants
+        w = BUYER_SIGNAL_WEIGHTS
+        buyer_score = (
+            w["demand"] * demand_num
+            + w["availability"] * availability_score
+            + w["offer_strength"] * avg_offer
+            + w["reliability"] * avg_rel
         )
 
         return BuyerSignal(
-            active_buyer_count=count,
-            demand_level=demand,
-            offer_strength=round(float(offer), 1),
-            reliability=round(float(rel), 1),
-            buyer_signal_score=round(float(b_score), 1),
+            active_buyer_count=active_count,
+            demand_level=dominant_demand,
+            offer_strength=round(avg_offer, 1),
+            reliability=round(avg_rel, 1),
+            buyer_signal_score=round(buyer_score, 1),
             classification=DataClassification.SYNTHETIC,
-            source_label="Synthetic demo dataset",
+            source_label="Synthetic demo dataset (Aggregated mandi buyer signals)",
         )

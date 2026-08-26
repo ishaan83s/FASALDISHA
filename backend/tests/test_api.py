@@ -13,7 +13,8 @@ client = TestClient(app)
 
 
 def test_health_endpoint():
-    """Test 1: Health endpoint returns healthy status and service version."""
+    """Test 1: Health endpoint returns healthy status and supports both GET and HEAD methods."""
+    # Test GET
     response = client.get("/health")
     assert response.status_code == 200
     data = response.json()
@@ -21,6 +22,11 @@ def test_health_endpoint():
     assert data["service"] == "FasalDisha-Backend"
     assert data["version"] == "2.1.0"
     assert data["database"] == "healthy"
+
+    # Test HEAD (required for uptime monitoring services like UptimeRobot)
+    head_response = client.head("/health")
+    assert head_response.status_code == 200
+    assert head_response.text == ""
 
 
 def test_geography_endpoints():

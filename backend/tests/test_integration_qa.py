@@ -13,13 +13,17 @@ client = TestClient(app)
 
 
 def test_01_health_endpoint():
-    """Phase 1: Connectivity gate /health endpoint."""
+    """Phase 1: Connectivity gate /health endpoint (GET & HEAD)."""
     response = client.get("/health")
     assert response.status_code == 200
     json_data = response.json()
     assert json_data["status"] == "healthy"
     assert json_data["version"] == "2.1.0"
     assert json_data["database"] == "healthy"
+
+    head_res = client.head("/health")
+    assert head_res.status_code == 200
+    assert head_res.text == ""
 
 
 def test_02_geography_states():

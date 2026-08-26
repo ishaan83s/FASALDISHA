@@ -2,6 +2,7 @@
 FasalDisha Backend FastAPI Application Entry Point.
 SSOT Reference: 01_SYSTEM_ARCHITECTURE.md, 05_API_CONTRACT.md
 """
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,12 +20,31 @@ from app.api.routes import (
     analysis_router,
 )
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("fasaldisha.api")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan event: initialize database schema and seed data on startup."""
+    """Lifespan event: initialize database schema, seed data, and pre-warm ML resources on startup."""
+    logger.info("Initializing FasalDisha database and seeding data...")
     init_db()
     seed_database()
+
+    # Pre-warm ML model loading and log status
+    try:
+        from ml.forecast_engine import _load_ml_model
+        model, encoders, features = _load_ml_model()
+        if model is not None:
+            logger.info("FasalDisha ML Subsystem: LIVE XGBoost inference active.")
+        else:
+            logger.warning("FasalDisha ML Subsystem: Running in contract-compliant PRECOMPUTED fallback mode.")
+    except Exception as e:
+        logger.warning("FasalDisha ML Subsystem startup check notice (%s: %s).", type(e).__name__, e)
+
     yield
 
 

@@ -7,14 +7,12 @@ import os
 from typing import Optional
 from app.schemas.forecast import ForecastOutput
 
-try:
-    from ml.forecast_engine import get_forecast as ml_get_forecast
-except ImportError:
-    # Resolve ml module from project root
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-    if project_root not in sys.path:
-        sys.path.insert(0, project_root)
-    from ml.forecast_engine import get_forecast as ml_get_forecast
+# Ensure project root is in sys.path for direct ml package resolution
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from ml.forecast_engine import get_forecast as ml_get_forecast
 
 
 class ForecastService:

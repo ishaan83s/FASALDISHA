@@ -4,10 +4,14 @@ Directly bridges trained XGBoost Model (mandi_price_model.pkl) with Backend Cont
 SSOT Reference: 02_DATA_AND_ML_SSOT.md
 """
 import json
+import logging
 import os
 import sys
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
+
+# Initialize non-sensitive ML subsystem logger
+logger = logging.getLogger("fasaldisha.ml")
 
 # Ensure backend package is resolvable
 backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))
@@ -33,14 +37,29 @@ def _load_ml_model():
     if _model is not None:
         return _model, _encoders, _features
 
-    if os.path.exists(MODEL_PATH) and os.path.exists(ENCODERS_PATH) and os.path.exists(FEATURES_PATH):
-        try:
-            import joblib
-            _model = joblib.load(MODEL_PATH)
-            _encoders = joblib.load(ENCODERS_PATH)
-            _features = joblib.load(FEATURES_PATH)
-        except Exception:
-            _model, _encoders, _features = None, None, None
+    if not (os.path.exists(MODEL_PATH) and os.path.exists(ENCODERS_PATH) and os.path.exists(FEATURES_PATH)):
+        logger.warning(
+            "Live ML model artifacts missing at %s. Activating precomputed fallback.",
+            MODEL_PATH,
+        )
+        return None, None, None
+
+    try:
+        import joblib
+        _model = joblib.load(MODEL_PATH)
+        _encoders = joblib.load(ENCODERS_PATH)
+        _features = joblib.load(FEATURES_PATH)
+        logger.info(
+            "Live XGBoost model successfully loaded from %s (%d features, %d encoders).",
+            MODEL_PATH, len(_features), len(_encoders)
+        )
+    except Exception as e:
+        logger.warning(
+            "Failed to load live ML model (%s: %s). Activating precomputed fallback.",
+            type(e).__name__, e
+        )
+        _model, _encoders, _features = None, None, None
+
     return _model, _encoders, _features
 
 
@@ -49,7 +68,8 @@ def _load_precomputed_forecasts() -> dict:
         try:
             with open(PRECOMPUTED_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to parse precomputed forecasts file (%s: %s).", type(e).__name__, e)
             return {}
     return {}
 
@@ -82,6 +102,7 @@ def _try_live_xgboost_inference(
 
     cid = commodity_id.lower().strip()
     if cid not in COMMODITY_MAPPINGS:
+        logger.info("Commodity '%s' has no trained XGBoost mapping. Using precomputed fallback.", commodity_id)
         return None
 
     comm_title, crop_cat, is_perishable = COMMODITY_MAPPINGS[cid]
@@ -93,6 +114,7 @@ def _try_live_xgboost_inference(
         # Resolve categorical values
         comm_classes = encoders["commodity"].classes_
         if comm_title not in comm_classes:
+            logger.info("Commodity title '%s' not in trained encoder classes. Using precomputed fallback.", comm_title)
             return None
         enc_comm = int(encoders["commodity"].transform([comm_title])[0])
 
@@ -149,20 +171,15 @@ def _try_live_xgboost_inference(
             rows.append(row)
 
         df_feat = pd.DataFrame(rows)[features]
+        logger.info(
+            "Executing live XGBoost model.predict(): commodity='%s', mandi='%s', shape=%s",
+            comm_title, mandi_id or "default", df_feat.shape
+        )
         raw_preds = model.predict(df_feat)
-
-        print("\n" + "="*50)
-        print("LIVE XGBOOST DEBUG")
-        print("="*50)
-        print(f"Model loaded: {'YES' if model is not None else 'NO'}")
-        print(f"Encoders loaded: {'YES' if encoders is not None else 'NO'}")
-        print(f"Features loaded: {'YES' if features is not None else 'NO'} ({len(features)} features)")
-        print(f"Target Commodity: {commodity_id} -> {comm_title} (Category: {crop_cat})")
-        print(f"Encoder Validation: PASS (State: {enc_state}, Dist: {enc_dist}, Mandi: {enc_mandi})")
-        print(f"DataFrame shape: {df_feat.shape}")
-        print(f"model.predict(): EXECUTED ({len(raw_preds)} daily horizons)")
-        print(f"Raw predictions: {[round(float(x), 2) for x in raw_preds]}")
-        print("="*50 + "\n")
+        logger.info(
+            "Live XGBoost prediction successful: raw_preds=%s",
+            [round(float(x), 2) for x in raw_preds]
+        )
 
         # Scale predictions to reflect user's current price while preserving model trend
         base_pred = float(raw_preds[0])
@@ -207,13 +224,10 @@ def _try_live_xgboost_inference(
             forecast_scope=ForecastScope.DIRECT_MODEL,
         )
     except Exception as e:
-        print("\n" + "="*50)
-        print("LIVE XGBOOST DEBUG EXCEPTION")
-        print("="*50)
-        print(f"Error during live inference: {e}")
-        import traceback
-        traceback.print_exc()
-        print("="*50 + "\n")
+        logger.warning(
+            "Live XGBoost inference failed for commodity '%s' (%s: %s). Activating fallback.",
+            commodity_id, type(e).__name__, e
+        )
         return None
 
 
@@ -239,6 +253,7 @@ def get_forecast(
         return live_result
 
     # 2. Fallback: Precomputed Forecasts
+    logger.info("Serving precomputed forecast for commodity '%s', mandi '%s'.", commodity_id, mandi_id or "default")
     precomputed = _load_precomputed_forecasts()
     cid = commodity_id.lower().strip()
 

@@ -148,3 +148,54 @@ def test_nearby_mandis_diagnostic_helper():
     assert len(data["data"]) > 0
     assert "mandi" in data["data"][0]
     assert "distanceKm" in data["data"][0]
+
+
+def test_location_consistency_guard_prevents_stale_coordinates_mismatch():
+    """Verify backend guards against submitting stale Pune coordinates when Kota is selected."""
+    # Stale Pune coordinates with Kota district
+    payload = {
+        "stateId": "rajasthan",
+        "districtId": "kota",
+        "latitude": 18.52,  # Stale Pune latitude
+        "longitude": 73.85,  # Stale Pune longitude
+        "commodityId": "wheat",
+        "quantityQuintals": 50,
+        "radiusKm": 100,
+    }
+    res = client.post("/analysis/run", json=payload)
+    assert res.status_code == 422
+    err = res.json()["error"]
+    assert err["code"] == "INVALID_INPUT"
+    assert "does not match declared district" in err["message"]
+
+
+def test_gps_location_resolution_and_consistent_analysis():
+    """Verify end-to-end GPS resolution and consistent analysis for Gujarat."""
+    # 1. Resolve GPS coordinates
+    resolve_res = client.get("/geography/resolve-location?latitude=23.02&longitude=72.57")
+    assert resolve_res.status_code == 200
+    resolved = resolve_res.json()["data"]
+    assert resolved["districtId"] == "ahmedabad"
+    assert resolved["stateId"] == "gujarat"
+    assert resolved["inSupportedRegion"] is True
+
+    # 2. Run analysis with resolved location
+    analysis_payload = {
+        "stateId": resolved["stateId"],
+        "districtId": resolved["districtId"],
+        "latitude": resolved["latitude"],
+        "longitude": resolved["longitude"],
+        "commodityId": "cotton",
+        "quantityQuintals": 30,
+        "radiusKm": 150,
+    }
+    res = client.post("/analysis/run", json=analysis_payload)
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["farmerContext"]["stateId"] == "gujarat"
+    assert data["farmerContext"]["districtId"] == "ahmedabad"
+    # Mandis should be Gujarat / regional mandis
+    assert any("Ahmedabad" in m["mandi"]["mandiName"] for m in data["nearbyMandis"])
+    # Weather is normal baseline (no seeded Pune rainfall)
+    assert data["weather"]["impactLevel"] == "LOW"
+

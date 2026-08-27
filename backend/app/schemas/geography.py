@@ -23,8 +23,24 @@ class District(BaseSchema):
     district_id: str
     state_id: str
     district_name: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     active: bool = True
     source_classification: DataClassification = DataClassification.REAL
+
+
+class ResolvedLocation(BaseSchema):
+    state_id: Optional[str] = None
+    state_name: Optional[str] = None
+    district_id: Optional[str] = None
+    district_name: Optional[str] = None
+    latitude: float
+    longitude: float
+    distance_km: Optional[float] = None
+    in_supported_region: bool = True
+    display_name: str
+    source: str = "GPS"
+    resolution_status: str = "RESOLVED"  # "RESOLVED" | "OUT_OF_BOUNDS"
 
 
 class Commodity(BaseSchema):

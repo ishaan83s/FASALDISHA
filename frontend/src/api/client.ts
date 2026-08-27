@@ -6,6 +6,7 @@ import type {
   State,
   District,
   Commodity,
+  ResolvedLocation,
   AnalysisRequest,
   AnalysisResult,
   APIEnvelope,
@@ -73,5 +74,12 @@ export const apiClient = {
   async checkHealth(): Promise<{ status: string; app: string; version: string }> {
     const res = await fetch(`${API_BASE_URL}/health`);
     return handleResponse<{ status: string; app: string; version: string }>(res);
+  },
+
+  async resolveLocation(latitude: number, longitude: number): Promise<ResolvedLocation> {
+    const res = await fetch(
+      `${API_BASE_URL}/geography/resolve-location?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`
+    );
+    return handleResponse<ResolvedLocation>(res);
   },
 };

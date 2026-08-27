@@ -9,7 +9,18 @@ import sys
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-client = httpx.Client(base_url="http://127.0.0.1:8000")
+try:
+    client = httpx.Client(base_url="http://127.0.0.1:8000", timeout=5.0)
+    # quick ping
+    res = client.get("/health")
+    if res.status_code != 200:
+        raise Exception("Server not live")
+except Exception:
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.db.seed.seed_data import seed_database
+    seed_database()
+    client = TestClient(app)
 
 scenarios = [
     (

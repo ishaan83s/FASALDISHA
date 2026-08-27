@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.common import APIEnvelope
-from app.schemas.geography import State, District, Commodity
+from app.schemas.geography import State, District, Commodity, ResolvedLocation
 from app.services.geography_service import GeographyService
 
 router = APIRouter(prefix="/geography", tags=["Geography"])
@@ -39,3 +39,17 @@ def get_commodities(
     """Retrieve list of commodities known in geographic context."""
     commodities = GeographyService.get_commodities(state_id, district_id, db)
     return APIEnvelope(success=True, data=commodities, error=None)
+
+
+@router.get("/resolve-location", response_model=APIEnvelope[ResolvedLocation])
+def resolve_location(
+    latitude: float = Query(..., ge=-90.0, le=90.0, description="Farmer GPS Latitude"),
+    longitude: float = Query(..., ge=-180.0, le=180.0, description="Farmer GPS Longitude"),
+    db: Session = Depends(get_db),
+):
+    """
+    Resolve device GPS coordinates to the nearest supported district reference location.
+    Returns structured canonical location context or OUT_OF_BOUNDS without fake precision.
+    """
+    resolved = GeographyService.resolve_location(latitude, longitude, db)
+    return APIEnvelope(success=True, data=resolved, error=None)

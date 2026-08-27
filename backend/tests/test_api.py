@@ -49,6 +49,12 @@ def test_geography_endpoints():
     dist_names = [d["districtName"] for d in dist_data["data"]]
     assert "Pune" in dist_names
     assert "Nashik" in dist_names
+    # Check that districts contain reference centroid coordinates
+    pune_dist = next(d for d in dist_data["data"] if d["districtId"] == "pune")
+    assert pune_dist["latitude"] is not None
+    assert pune_dist["longitude"] is not None
+    assert pytest.approx(pune_dist["latitude"], 0.1) == 18.52
+    assert pytest.approx(pune_dist["longitude"], 0.1) == 73.85
 
     # Test Commodities
     res_commodities = client.get("/geography/commodities")
@@ -59,6 +65,37 @@ def test_geography_endpoints():
     assert "onion" in c_ids
     assert "tomato" in c_ids
     assert "wheat" in c_ids
+
+
+def test_geography_resolve_location_endpoint():
+    """Test GPS coordinate resolution against supported geography catalog."""
+    # Near Pune
+    res_pune = client.get("/geography/resolve-location?latitude=18.5204&longitude=73.8567")
+    assert res_pune.status_code == 200
+    pune_json = res_pune.json()
+    assert pune_json["success"] is True
+    assert pune_json["data"]["inSupportedRegion"] is True
+    assert pune_json["data"]["districtId"] == "pune"
+    assert pune_json["data"]["stateId"] == "maharashtra"
+    assert pune_json["data"]["resolutionStatus"] == "RESOLVED"
+
+    # Near Ahmedabad
+    res_ahm = client.get("/geography/resolve-location?latitude=23.0225&longitude=72.5714")
+    assert res_ahm.status_code == 200
+    ahm_json = res_ahm.json()
+    assert ahm_json["success"] is True
+    assert ahm_json["data"]["inSupportedRegion"] is True
+    assert ahm_json["data"]["districtId"] == "ahmedabad"
+    assert ahm_json["data"]["stateId"] == "gujarat"
+
+    # Far out-of-bounds (e.g. London / New York)
+    res_oob = client.get("/geography/resolve-location?latitude=40.7128&longitude=-74.0060")
+    assert res_oob.status_code == 200
+    oob_json = res_oob.json()
+    assert oob_json["success"] is True
+    assert oob_json["data"]["inSupportedRegion"] is False
+    assert oob_json["data"]["resolutionStatus"] == "OUT_OF_BOUNDS"
+    assert oob_json["data"]["districtId"] is None
 
 
 def test_crops_compatibility_endpoint():
@@ -226,3 +263,122 @@ def test_seeded_risk_override_demonstration():
     # Distinct confidence metrics
     assert isinstance(decision["decisionConfidence"], float)
     assert isinstance(data["forecast"]["forecastConfidence"], float)
+
+
+def test_location_consistency_mismatch_rejection():
+    """Test 9: Geographic coordinates resolving to another district (e.g. Ahmedabad coordinates with Pune declared district) are rejected."""
+    payload = {
+        "stateId": "maharashtra",
+        "districtId": "pune",
+        "latitude": 23.02,  # Ahmedabad, Gujarat coordinates
+        "longitude": 72.57,
+        "commodityId": "onion",
+        "quantityQuintals": 20,
+        "radiusKm": 100,
+    }
+    response = client.post("/analysis/run", json=payload)
+    assert response.status_code == 422
+    err_json = response.json()
+    assert err_json["success"] is False
+    assert err_json["error"]["code"] == "INVALID_INPUT"
+    assert "does not match declared district" in err_json["error"]["message"]
+
+
+def test_coordinates_outside_supported_coverage_rejected():
+    """Test 10: Coordinates outside supported coverage cannot be submitted with an arbitrary supported district."""
+    payload = {
+        "stateId": "maharashtra",
+        "districtId": "pune",
+        "latitude": 40.7128,  # New York coordinates
+        "longitude": -74.0060,
+        "commodityId": "onion",
+        "quantityQuintals": 20,
+        "radiusKm": 100,
+    }
+    response = client.post("/analysis/run", json=payload)
+    assert response.status_code == 422
+    err_json = response.json()
+    assert err_json["success"] is False
+    assert err_json["error"]["code"] == "INVALID_INPUT"
+    assert "outside supported coverage regions" in err_json["error"]["message"]
+
+
+def test_district_state_mismatch_rejection():
+    """Test 11: District not belonging to the selected state is rejected."""
+    payload = {
+        "stateId": "maharashtra",
+        "districtId": "kota",  # Kota is in Rajasthan
+        "latitude": 25.18,
+        "longitude": 75.83,
+        "commodityId": "wheat",
+        "quantityQuintals": 20,
+        "radiusKm": 100,
+    }
+    response = client.post("/analysis/run", json=payload)
+    assert response.status_code == 422
+    err_json = response.json()
+    assert err_json["success"] is False
+    assert err_json["error"]["code"] == "INVALID_INPUT"
+    assert "belongs to state 'rajasthan'" in err_json["error"]["message"]
+
+
+def test_invalid_coordinate_range_rejection():
+    """Test 12: Coordinates outside valid latitude/longitude bounds are rejected."""
+    payload = {
+        "stateId": "maharashtra",
+        "districtId": "pune",
+        "latitude": 150.0,  # Invalid latitude (> 90)
+        "longitude": 73.85,
+        "commodityId": "onion",
+        "quantityQuintals": 20,
+        "radiusKm": 100,
+    }
+    response = client.post("/analysis/run", json=payload)
+    assert response.status_code == 422
+    err_json = response.json()
+    assert err_json["success"] is False
+    assert err_json["error"]["code"] == "INVALID_INPUT"
+
+
+def test_consistent_manual_district_selection_pipeline():
+    """Test 13: Manually selecting Kota, Rajasthan coordinates searches Kota region and does not leak Pune seeded weather."""
+    payload = {
+        "stateId": "rajasthan",
+        "districtId": "kota",
+        "latitude": 25.18,
+        "longitude": 75.83,
+        "commodityId": "wheat",
+        "quantityQuintals": 50,
+        "radiusKm": 100,
+    }
+    response = client.post("/analysis/run", json=payload)
+    assert response.status_code == 200
+    data = response.json()["data"]
+
+    # Verify mandi discovery is centered at Kota
+    assert len(data["nearbyMandis"]) > 0
+    mandi_names = [m["mandi"]["mandiName"] for m in data["nearbyMandis"]]
+    assert any("Kota" in name for name in mandi_names)
+
+    # Verify weather did not trigger Pune seeded weather override
+    assert data["weather"]["impactLevel"] == "LOW"
+    assert data["farmerContext"]["stateId"] == "rajasthan"
+    assert data["farmerContext"]["districtId"] == "kota"
+
+
+def test_db_migration_error_handling(monkeypatch):
+    """Test 14: Verify SQLite compatibility migration raises clear RuntimeError on connection/schema failure."""
+    from app.db import session
+
+    # Bypass create_all to isolate the migration execute block
+    monkeypatch.setattr(session.Base.metadata, "create_all", lambda bind: None)
+
+    def broken_connect(*args, **kwargs):
+        raise RuntimeError("Simulated connection failure during migration")
+
+    monkeypatch.setattr(session.engine, "connect", broken_connect)
+    with pytest.raises(RuntimeError, match="Database schema compatibility migration failed"):
+        session.init_db()
+
+
+

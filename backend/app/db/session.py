@@ -32,6 +32,25 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+import logging
+from sqlalchemy import text
+
+logger = logging.getLogger("fasaldisha.db")
+
+
 def init_db() -> None:
-    """Create all tables in the configured database."""
+    """Create all tables in the configured database and ensure columns exist."""
     Base.metadata.create_all(bind=engine)
+    # Ensure latitude and longitude columns exist on districts table for SQLite
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(districts)")).fetchall()
+            existing_cols = {row[1] for row in result}
+            if "latitude" not in existing_cols:
+                conn.execute(text("ALTER TABLE districts ADD COLUMN latitude FLOAT"))
+            if "longitude" not in existing_cols:
+                conn.execute(text("ALTER TABLE districts ADD COLUMN longitude FLOAT"))
+            conn.commit()
+    except Exception as exc:
+        logger.error("Failed to execute database schema compatibility migration: %s", exc)
+        raise RuntimeError(f"Database schema compatibility migration failed: {exc}") from exc

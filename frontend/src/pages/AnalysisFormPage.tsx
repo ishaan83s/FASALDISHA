@@ -3,7 +3,7 @@
  * SSOT Reference: 06_FRONTEND_CONTRACT.md, Prompt Section 12 "Redesign the Input Page".
  */
 import React, { useState, useEffect } from 'react';
-import type { State, District, Commodity, AnalysisRequest, AnalysisResult } from '../types';
+import type { State, District, Commodity, AnalysisRequest, AnalysisResult, CanonicalLocation, ResolvedLocation } from '../types';
 import { apiClient } from '../api/client';
 import { GeographySelector } from '../components/GeographySelector';
 import { LocationPicker } from '../components/LocationPicker';
@@ -33,10 +33,20 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   const [districts, setDistricts] = useState<District[]>([]);
   const [commodities, setCommodities] = useState<Commodity[]>([]);
 
-  const [selectedStateId, setSelectedStateId] = useState<string>('maharashtra');
-  const [selectedDistrictId, setSelectedDistrictId] = useState<string>('pune');
-  const [latitude, setLatitude] = useState<number>(18.52);
-  const [longitude, setLongitude] = useState<number>(73.85);
+  // Single Canonical Location Context (SSOT for geographic inputs)
+  const [location, setLocation] = useState<CanonicalLocation>({
+    stateId: 'maharashtra',
+    districtId: 'pune',
+    latitude: 18.52,
+    longitude: 73.85,
+    displayName: 'Pune, Maharashtra',
+    source: 'PRESET',
+    resolutionStatus: 'RESOLVED',
+  });
+
+  // Incrementing version token to invalidate stale async GPS resolutions on manual changes
+  const locationVersionRef = React.useRef<number>(0);
+
   const [selectedCommodityId, setSelectedCommodityId] = useState<string>('onion');
   const [quantityQuintals, setQuantityQuintals] = useState<number>(25);
   const [radiusKm, setRadiusKm] = useState<number>(120);
@@ -73,19 +83,88 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   }, []);
 
   const handleSelectState = async (stateId: string) => {
-    setSelectedStateId(stateId);
-    setSelectedDistrictId('');
+    // Invalidate any in-flight GPS resolution
+    locationVersionRef.current += 1;
     setLoadingDistricts(true);
     try {
       const dists = await apiClient.getDistricts(stateId);
       setDistricts(dists);
-      if (dists.length > 0) {
-        setSelectedDistrictId(dists[0].districtId);
+      const targetState = states.find((s) => s.stateId === stateId);
+      const firstDist = dists[0];
+      if (firstDist) {
+        setLocation({
+          stateId,
+          districtId: firstDist.districtId,
+          latitude: firstDist.latitude ?? 18.52,
+          longitude: firstDist.longitude ?? 73.85,
+          displayName: `${firstDist.districtName}, ${targetState?.stateName || stateId}`,
+          source: 'MANUAL',
+          resolutionStatus: 'RESOLVED',
+        });
+      } else {
+        setLocation((prev) => ({
+          ...prev,
+          stateId,
+          districtId: '',
+          source: 'MANUAL',
+        }));
       }
     } catch (err: any) {
       setErrorMsg(`Failed to load districts: ${err.message}`);
     } finally {
       setLoadingDistricts(false);
+    }
+  };
+
+  const handleSelectDistrict = (districtId: string) => {
+    // Invalidate any in-flight GPS resolution
+    locationVersionRef.current += 1;
+    const dist = districts.find((d) => d.districtId === districtId);
+    const targetState = states.find((s) => s.stateId === location.stateId);
+    if (dist) {
+      setLocation({
+        stateId: location.stateId,
+        districtId: dist.districtId,
+        latitude: dist.latitude ?? location.latitude,
+        longitude: dist.longitude ?? location.longitude,
+        displayName: `${dist.districtName}, ${targetState?.stateName || location.stateId}`,
+        source: 'MANUAL',
+        resolutionStatus: 'RESOLVED',
+      });
+    } else {
+      setLocation((prev) => ({
+        ...prev,
+        districtId,
+        source: 'MANUAL',
+      }));
+    }
+  };
+
+  const handleGpsStart = (): number => {
+    locationVersionRef.current += 1;
+    return locationVersionRef.current;
+  };
+
+  const handleGpsResolved = (resolved: ResolvedLocation, versionToken: number) => {
+    // Reject stale GPS resolution if user changed state or district while GPS was in flight
+    if (versionToken !== locationVersionRef.current) {
+      return;
+    }
+
+    if (resolved.inSupportedRegion && resolved.stateId && resolved.districtId) {
+      if (resolved.stateId !== location.stateId) {
+        apiClient.getDistricts(resolved.stateId).then((dists) => setDistricts(dists)).catch(() => {});
+      }
+      setLocation({
+        stateId: resolved.stateId,
+        districtId: resolved.districtId,
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+        displayName: resolved.displayName,
+        source: 'GPS',
+        resolutionStatus: 'RESOLVED',
+        distanceKm: resolved.distanceKm,
+      });
     }
   };
 
@@ -98,9 +177,8 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     quantityQuintals: number;
     radiusKm: number;
   }) => {
-    setSelectedStateId(preset.stateId);
-    setLatitude(preset.lat);
-    setLongitude(preset.lon);
+    // Invalidate any in-flight GPS resolution
+    locationVersionRef.current += 1;
     setSelectedCommodityId(preset.commodityId);
     setQuantityQuintals(preset.quantityQuintals);
     setRadiusKm(preset.radiusKm);
@@ -108,15 +186,35 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     try {
       const dists = await apiClient.getDistricts(preset.stateId);
       setDistricts(dists);
-      setSelectedDistrictId(preset.districtId);
     } catch {
       // fallback
     }
+
+    setLocation({
+      stateId: preset.stateId,
+      districtId: preset.districtId,
+      latitude: preset.lat,
+      longitude: preset.lon,
+      displayName: `${preset.districtId.toUpperCase()}, ${preset.stateId.toUpperCase()}`,
+      source: 'PRESET',
+      resolutionStatus: 'RESOLVED',
+    });
+  };
+
+  const handleCoordinatesChange = (lat: number, lon: number) => {
+    // Invalidate any in-flight GPS resolution
+    locationVersionRef.current += 1;
+    setLocation((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lon,
+      source: 'MANUAL',
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStateId || !selectedDistrictId || !selectedCommodityId) {
+    if (!location.stateId || !location.districtId || !selectedCommodityId) {
       setErrorMsg('Please select your state, district, and crop.');
       return;
     }
@@ -129,10 +227,10 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     setErrorMsg(null);
 
     const payload: AnalysisRequest = {
-      stateId: selectedStateId,
-      districtId: selectedDistrictId,
-      latitude,
-      longitude,
+      stateId: location.stateId,
+      districtId: location.districtId,
+      latitude: location.latitude,
+      longitude: location.longitude,
       commodityId: selectedCommodityId,
       quantityQuintals,
       radiusKm,
@@ -199,21 +297,19 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
           <GeographySelector
             states={states}
             districts={districts}
-            selectedStateId={selectedStateId}
-            selectedDistrictId={selectedDistrictId}
+            selectedStateId={location.stateId}
+            selectedDistrictId={location.districtId}
             loadingStates={loadingStates}
             loadingDistricts={loadingDistricts}
             onSelectState={handleSelectState}
-            onSelectDistrict={setSelectedDistrictId}
+            onSelectDistrict={handleSelectDistrict}
           />
 
           <LocationPicker
-            latitude={latitude}
-            longitude={longitude}
-            onCoordinatesChange={(lat, lon) => {
-              setLatitude(lat);
-              setLongitude(lon);
-            }}
+            location={location}
+            onCoordinatesChange={handleCoordinatesChange}
+            onGpsStart={handleGpsStart}
+            onGpsResolved={handleGpsResolved}
             onApplyDemoPreset={handleApplyDemoPreset}
           />
         </div>

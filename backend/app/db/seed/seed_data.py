@@ -23,27 +23,27 @@ STATES: List[Dict[str, Any]] = [
 
 DISTRICTS: List[Dict[str, Any]] = [
     # Maharashtra
-    {"district_id": "pune", "state_id": "maharashtra", "district_name": "Pune", "active": True},
-    {"district_id": "nashik", "state_id": "maharashtra", "district_name": "Nashik", "active": True},
-    {"district_id": "ahmednagar", "state_id": "maharashtra", "district_name": "Ahmednagar", "active": True},
-    {"district_id": "solapur", "state_id": "maharashtra", "district_name": "Solapur", "active": True},
-    {"district_id": "kolhapur", "state_id": "maharashtra", "district_name": "Kolhapur", "active": True},
-    {"district_id": "nagpur", "state_id": "maharashtra", "district_name": "Nagpur", "active": True},
-    {"district_id": "chhatrapati_sambhajinagar", "state_id": "maharashtra", "district_name": "Chhatrapati Sambhajinagar", "active": True},
+    {"district_id": "pune", "state_id": "maharashtra", "district_name": "Pune", "latitude": 18.5204, "longitude": 73.8567, "active": True},
+    {"district_id": "nashik", "state_id": "maharashtra", "district_name": "Nashik", "latitude": 20.0000, "longitude": 73.7800, "active": True},
+    {"district_id": "ahmednagar", "state_id": "maharashtra", "district_name": "Ahmednagar", "latitude": 19.0952, "longitude": 74.7496, "active": True},
+    {"district_id": "solapur", "state_id": "maharashtra", "district_name": "Solapur", "latitude": 17.6599, "longitude": 75.9064, "active": True},
+    {"district_id": "kolhapur", "state_id": "maharashtra", "district_name": "Kolhapur", "latitude": 16.7050, "longitude": 74.2433, "active": True},
+    {"district_id": "nagpur", "state_id": "maharashtra", "district_name": "Nagpur", "latitude": 21.1458, "longitude": 79.0882, "active": True},
+    {"district_id": "chhatrapati_sambhajinagar", "state_id": "maharashtra", "district_name": "Chhatrapati Sambhajinagar", "latitude": 19.8762, "longitude": 75.3433, "active": True},
     # Gujarat
-    {"district_id": "ahmedabad", "state_id": "gujarat", "district_name": "Ahmedabad", "active": True},
-    {"district_id": "surat", "state_id": "gujarat", "district_name": "Surat", "active": True},
-    {"district_id": "rajkot", "state_id": "gujarat", "district_name": "Rajkot", "active": True},
-    {"district_id": "vadodara", "state_id": "gujarat", "district_name": "Vadodara", "active": True},
-    {"district_id": "junagadh", "state_id": "gujarat", "district_name": "Junagadh", "active": True},
-    {"district_id": "mehsana", "state_id": "gujarat", "district_name": "Mehsana", "active": True},
+    {"district_id": "ahmedabad", "state_id": "gujarat", "district_name": "Ahmedabad", "latitude": 23.0225, "longitude": 72.5714, "active": True},
+    {"district_id": "surat", "state_id": "gujarat", "district_name": "Surat", "latitude": 21.1702, "longitude": 72.8311, "active": True},
+    {"district_id": "rajkot", "state_id": "gujarat", "district_name": "Rajkot", "latitude": 22.3039, "longitude": 70.8022, "active": True},
+    {"district_id": "vadodara", "state_id": "gujarat", "district_name": "Vadodara", "latitude": 22.3072, "longitude": 73.1812, "active": True},
+    {"district_id": "junagadh", "state_id": "gujarat", "district_name": "Junagadh", "latitude": 21.5222, "longitude": 70.4579, "active": True},
+    {"district_id": "mehsana", "state_id": "gujarat", "district_name": "Mehsana", "latitude": 23.5880, "longitude": 72.3693, "active": True},
     # Rajasthan
-    {"district_id": "jaipur", "state_id": "rajasthan", "district_name": "Jaipur", "active": True},
-    {"district_id": "jodhpur", "state_id": "rajasthan", "district_name": "Jodhpur", "active": True},
-    {"district_id": "kota", "state_id": "rajasthan", "district_name": "Kota", "active": True},
-    {"district_id": "alwar", "state_id": "rajasthan", "district_name": "Alwar", "active": True},
-    {"district_id": "sikar", "state_id": "rajasthan", "district_name": "Sikar", "active": True},
-    {"district_id": "bikaner", "state_id": "rajasthan", "district_name": "Bikaner", "active": True},
+    {"district_id": "jaipur", "state_id": "rajasthan", "district_name": "Jaipur", "latitude": 26.9124, "longitude": 75.7873, "active": True},
+    {"district_id": "jodhpur", "state_id": "rajasthan", "district_name": "Jodhpur", "latitude": 26.2389, "longitude": 73.0243, "active": True},
+    {"district_id": "kota", "state_id": "rajasthan", "district_name": "Kota", "latitude": 25.1800, "longitude": 75.8300, "active": True},
+    {"district_id": "alwar", "state_id": "rajasthan", "district_name": "Alwar", "latitude": 27.5530, "longitude": 76.6346, "active": True},
+    {"district_id": "sikar", "state_id": "rajasthan", "district_name": "Sikar", "latitude": 27.6094, "longitude": 75.1398, "active": True},
+    {"district_id": "bikaner", "state_id": "rajasthan", "district_name": "Bikaner", "latitude": 28.0229, "longitude": 73.3119, "active": True},
 ]
 
 COMMODITIES: List[Dict[str, Any]] = [
@@ -159,6 +159,9 @@ def seed_database():
             existing = db.query(DistrictModel).filter_by(district_id=dist_data["district_id"]).first()
             if not existing:
                 db.add(DistrictModel(**dist_data))
+            else:
+                existing.latitude = dist_data.get("latitude")
+                existing.longitude = dist_data.get("longitude")
 
         # 3. Seed Commodities
         for comm_data in COMMODITIES:

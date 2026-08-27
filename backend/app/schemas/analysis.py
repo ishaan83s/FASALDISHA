@@ -21,8 +21,8 @@ class AnalysisRequest(BaseSchema):
     """Canonical Request for POST /analysis/run."""
     state_id: str
     district_id: str
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90.0, le=90.0, description="Farmer Latitude (-90 to 90)")
+    longitude: float = Field(ge=-180.0, le=180.0, description="Farmer Longitude (-180 to 180)")
     commodity_id: str
     quantity_quintals: float = Field(gt=0, description="Quantity in quintals")
     radius_km: float = Field(default=100.0, ge=1.0, le=300.0)

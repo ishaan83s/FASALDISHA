@@ -37,6 +37,8 @@ class DistrictModel(Base):
     district_id = Column(String(50), primary_key=True)
     state_id = Column(String(50), ForeignKey("states.state_id"), nullable=False)
     district_name = Column(String(100), nullable=False)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
     active = Column(Boolean, default=True, nullable=False)
     source_classification = Column(String(50), default="REAL", nullable=False)
 

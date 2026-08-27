@@ -3,6 +3,7 @@ Top-Level Analysis Orchestrator Service.
 SSOT Reference: 01_SYSTEM_ARCHITECTURE.md, 03_DECISION_ENGINE_SSOT.md, 05_API_CONTRACT.md
 """
 from typing import Optional, List, Dict, Any
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.schemas.analysis import (
     AnalysisRequest,
@@ -14,7 +15,7 @@ from app.schemas.analysis import (
 )
 from app.schemas.common import DataClassification
 from app.services.geography_service import GeographyService
-from app.services.mandi_service import MandiService
+from app.services.mandi_service import MandiService, haversine_distance
 from app.services.market_data_service import MarketDataService
 from app.services.forecast_service import ForecastService
 from app.services.transport_service import TransportService
@@ -30,15 +31,54 @@ class AnalysisService:
     def run_analysis(request: AnalysisRequest, db: Session) -> AnalysisResult:
         """
         End-to-End Analysis Pipeline:
-        1. Resolve Commodity & Geography Context
-        2. Dynamic Coordinate-based Nearby Mandi Discovery (Cross-Boundary)
-        3. Market Price, Forecast, Transport & Synthetic Buyer Aggregation
-        4. Weather, Perishability & Route Risk Calculation
-        5. Quantity-aware Comparative Economics & Transparent Multi-Factor Ranking
-        6. Explainable Decision Engine with Deterministic Risk Override Capability
-        7. Returns Frozen AnalysisResult Contract
+        1. Validate & Canonicalize Location Context (Guards against contradictory coordinates/districts)
+        2. Resolve Commodity Metadata
+        3. Dynamic Coordinate-based Nearby Mandi Discovery (Cross-Boundary)
+        4. Market Price, Forecast, Transport & Synthetic Buyer Aggregation
+        5. Unified Weather, Perishability & Route Risk Calculation
+        6. Quantity-aware Comparative Economics & Transparent Multi-Factor Ranking
+        7. Explainable Decision Engine with Deterministic Risk Override Capability
+        8. Returns Frozen AnalysisResult Contract
         """
-        # Step 1: Resolve Commodity Metadata
+        # Step 1: Validate Geographic Context & Consistency against Geography Catalog
+        district = GeographyService.get_district_by_id(request.district_id, db)
+        if not district:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid district '{request.district_id}'. Please select a supported district from the geography catalog.",
+            )
+
+        if district.state_id != request.state_id.lower().strip():
+            raise HTTPException(
+                status_code=422,
+                detail=f"District '{district.district_name}' belongs to state '{district.state_id}', not '{request.state_id}'.",
+            )
+
+        # Resolve submitted coordinates against the single authoritative geography catalog
+        resolved_loc = GeographyService.resolve_location(request.latitude, request.longitude, db)
+        if not resolved_loc.in_supported_region or resolved_loc.resolution_status != "RESOLVED":
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Geographic coordinates ({request.latitude:.4f}°N, {request.longitude:.4f}°E) fall outside "
+                    f"supported coverage regions (Maharashtra, Gujarat, Rajasthan) and cannot be associated with district '{district.district_name}'."
+                ),
+            )
+
+        if (
+            resolved_loc.state_id != request.state_id.lower().strip()
+            or resolved_loc.district_id != request.district_id.lower().strip()
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Location consistency error: Submitted coordinates ({request.latitude:.4f}°N, {request.longitude:.4f}°E) "
+                    f"resolve to district '{resolved_loc.district_name}' ({resolved_loc.state_name}), "
+                    f"which does not match declared district '{district.district_name}' ({district.state_id.capitalize()})."
+                ),
+            )
+
+        # Step 2: Resolve Commodity Metadata
         commodity = GeographyService.get_commodity_by_id(request.commodity_id, db)
         if not commodity:
             # Fallback commodity metadata if not in DB yet

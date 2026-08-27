@@ -35,6 +35,34 @@ export type ModelType = 'LIVE' | 'PRECOMPUTED';
 
 export type ForecastScope = 'DIRECT_MODEL' | 'DERIVED_PROPAGATION';
 
+export type LocationSource = 'MANUAL' | 'GPS' | 'PRESET';
+export type LocationResolutionStatus = 'RESOLVED' | 'OUT_OF_BOUNDS' | 'UNRESOLVED';
+
+export interface CanonicalLocation {
+  stateId: string;
+  districtId: string;
+  latitude: number;
+  longitude: number;
+  displayName?: string;
+  source: LocationSource;
+  resolutionStatus?: LocationResolutionStatus;
+  distanceKm?: number;
+}
+
+export interface ResolvedLocation {
+  stateId?: string;
+  stateName?: string;
+  districtId?: string;
+  districtName?: string;
+  latitude: number;
+  longitude: number;
+  distanceKm?: number;
+  inSupportedRegion: boolean;
+  displayName: string;
+  source: string;
+  resolutionStatus: 'RESOLVED' | 'OUT_OF_BOUNDS';
+}
+
 export interface State {
   stateId: string;
   stateName: string;
@@ -46,6 +74,8 @@ export interface District {
   districtId: string;
   stateId: string;
   districtName: string;
+  latitude?: number;
+  longitude?: number;
   active: boolean;
   sourceClassification: DataClassification;
 }

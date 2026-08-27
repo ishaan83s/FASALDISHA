@@ -31,7 +31,8 @@ Or on controlled failure:
 |---|---|---|
 | `GET` | `/health` | Liveness & database connection health check |
 | `GET` | `/geography/states` | List active states (Rajasthan, Gujarat, Maharashtra) |
-| `GET` | `/geography/districts?stateId=...` | List districts in selected state context |
+| `GET` | `/geography/districts?stateId=...` | List districts with reference centroids in selected state context |
+| `GET` | `/geography/resolve-location?latitude=...&longitude=...` | Resolve GPS coordinates against supported catalog |
 | `GET` | `/geography/commodities?stateId=...&districtId=...` | List available commodities & perishability metadata |
 | `GET` | `/crops` | Backward compatibility crop list endpoint |
 | `POST` | `/analysis/run` | **Canonical Analysis Endpoint** (full routing, economics & decision) |

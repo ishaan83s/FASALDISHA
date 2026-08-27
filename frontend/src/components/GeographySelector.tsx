@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import type { State, District } from '../types';
+import { useLanguage } from '../i18n';
 
 interface GeographySelectorProps {
   states: State[];
@@ -26,11 +27,13 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
   onSelectState,
   onSelectDistrict,
 }) => {
+  const { t, translateState, translateDistrict } = useLanguage();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-          State (Context Scope)
+          {t('geography.stateLabel')}
         </label>
         <select
           id="state-select"
@@ -40,22 +43,22 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
           className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition duration-150"
         >
           <option value="" disabled>
-            {loadingStates ? 'Loading states...' : '-- Select State --'}
+            {loadingStates ? t('geography.loadingStates') : t('geography.selectStatePrompt')}
           </option>
           {states.map((s) => (
             <option key={s.stateId} value={s.stateId}>
-              {s.stateName}
+              {translateState(s.stateName)}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Search is coordinate-based and can cross state borders.
+          {t('geography.coordinateSearchNote')}
         </p>
       </div>
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-          District
+          {t('geography.districtLabel')}
         </label>
         <select
           id="district-select"
@@ -66,14 +69,14 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
         >
           <option value="" disabled>
             {!selectedStateId
-              ? '-- Select State First --'
+              ? t('geography.selectStateFirst')
               : loadingDistricts
-              ? 'Loading districts...'
-              : '-- Select District --'}
+              ? t('geography.loadingDistricts')
+              : t('geography.selectDistrictPrompt')}
           </option>
           {districts.map((d) => (
             <option key={d.districtId} value={d.districtId}>
-              {d.districtName}
+              {translateDistrict(d.districtName)}
             </option>
           ))}
         </select>
@@ -81,3 +84,4 @@ export const GeographySelector: React.FC<GeographySelectorProps> = ({
     </div>
   );
 };
+

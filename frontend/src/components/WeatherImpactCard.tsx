@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import type { WeatherSignal } from '../types';
+import { useLanguage } from '../i18n';
 import { CloudRain, Sun, AlertTriangle } from 'lucide-react';
 
 interface WeatherImpactCardProps {
@@ -15,6 +16,7 @@ export const WeatherImpactCard: React.FC<WeatherImpactCardProps> = ({
   weather,
   commodityName,
 }) => {
+  const { t, translateCrop, translateClassification } = useLanguage();
   const events = weather.events || [];
   const hasSevereWeather = weather.impactLevel === 'HIGH' || weather.impactLevel === 'CRITICAL';
   const hasModerateWeather = weather.impactLevel === 'MODERATE';
@@ -22,25 +24,25 @@ export const WeatherImpactCard: React.FC<WeatherImpactCardProps> = ({
   const getImpactBadge = () => {
     if (hasSevereWeather) {
       return {
-        label: 'HIGH IMPACT / DELAY RISK',
+        label: t('weather.highImpactBadge'),
         style: 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800',
         icon: <CloudRain className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
-        advice: `Active rainfall / waterlogging alert in transit corridor. Early sale recommended to prevent ${commodityName} spoilage.`,
+        advice: t('weather.highImpactAdvice', { commodity: translateCrop(commodityName) }),
       };
     }
     if (hasModerateWeather) {
       return {
-        label: 'MODERATE WEATHER IMPACT',
+        label: t('weather.moderateBadge'),
         style: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
         icon: <CloudRain className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
-        advice: `Mild rain forecasted. Transit corridors remain operable with minor moisture precautions.`,
+        advice: t('weather.moderateAdvice'),
       };
     }
     return {
-      label: 'CLEAR TRANSIT CONDITIONS',
+      label: t('weather.clearBadge'),
       style: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       icon: <Sun className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
-      advice: `No adverse weather threats detected. Safe road transit to all candidate mandis.`,
+      advice: t('weather.clearAdvice'),
     };
   };
 
@@ -54,10 +56,10 @@ export const WeatherImpactCard: React.FC<WeatherImpactCardProps> = ({
           {badge.icon}
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-              Weather & Transit Impact
+              {t('weather.title')}
             </h3>
             <p className="text-[11px] text-slate-400">
-              Regional weather radar evaluating crop storage and road delay risks.
+              {t('weather.subtitle')}
             </p>
           </div>
         </div>
@@ -70,7 +72,7 @@ export const WeatherImpactCard: React.FC<WeatherImpactCardProps> = ({
       {/* Decision-Centric Advisory */}
       <div className="p-3 bg-earth-50 dark:bg-slate-900 rounded-2xl border border-earth-200/80 dark:border-slate-800 text-xs space-y-1.5">
         <span className="font-semibold text-slate-700 dark:text-slate-300 block">
-          Farmer Selling Impact:
+          {t('weather.farmerSellingImpact')}
         </span>
         <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
           {badge.advice}
@@ -88,10 +90,10 @@ export const WeatherImpactCard: React.FC<WeatherImpactCardProps> = ({
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
                 <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {evt.eventType.replace(/_/g, ' ')}: {evt.description || 'Active advisory'}
+                  {evt.eventType.replace(/_/g, ' ')}: {evt.description || t('weather.activeAdvisory')}
                 </span>
               </div>
-              <span className="text-slate-400 font-mono text-[10px]">{evt.classification}</span>
+              <span className="text-slate-400 font-mono text-[10px]">{translateClassification(evt.classification)}</span>
             </div>
           ))}
         </div>

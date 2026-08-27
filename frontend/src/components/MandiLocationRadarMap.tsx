@@ -5,6 +5,7 @@
  */
 import React, { useState } from 'react';
 import type { CandidateMandi, FarmerContext } from '../types';
+import { useLanguage } from '../i18n';
 import { Compass } from 'lucide-react';
 
 interface MandiLocationRadarMapProps {
@@ -18,6 +19,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
   candidates,
   recommendedMandiId,
 }) => {
+  const { t } = useLanguage();
   const [selectedMandiId, setSelectedMandiId] = useState<string | null>(null);
 
   const radiusKm = farmerContext.radiusKm || 100;
@@ -72,16 +74,16 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
           <Compass className="w-5 h-5 text-agri-600 dark:text-agri-400" />
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-              Market Discovery Radar Map
+              {t('radar.title')}
             </h3>
             <p className="text-[11px] text-slate-400">
-              Showing candidate mandis within {radiusKm} km radius of your location.
+              {t('radar.subtitle', { radius: radiusKm })}
             </p>
           </div>
         </div>
 
         <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-earth-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-          {candidates.length} Markets
+          {t('radar.marketsCount', { count: candidates.length })}
         </span>
       </div>
 
@@ -223,7 +225,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
               textAnchor="middle"
               className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200 select-none pointer-events-none"
             >
-              Your Farm
+              {t('radar.yourFarm')}
             </text>
           </g>
 
@@ -305,7 +307,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
                       textAnchor="middle"
                       className="text-[7.5px] font-black fill-emerald-100 font-mono tracking-wider"
                     >
-                      BEST • ₹{Math.round(c.riskAdjustedReturn).toLocaleString('en-IN')}
+                      {t('radar.bestBadge', { amount: Math.round(c.riskAdjustedReturn).toLocaleString('en-IN') })}
                     </text>
                   </g>
                 )}
@@ -332,18 +334,18 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
         <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs border border-earth-200 dark:border-slate-800 rounded-xl p-1.5 text-[9px] font-semibold space-y-1 shadow-2xs">
           <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
             <span className="w-2.5 h-0.5 bg-emerald-600 rounded-full inline-block" />
-            <span>Recommended Route (#1)</span>
+            <span>{t('radar.recommendedRouteLegend')}</span>
           </div>
           <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
             <span className="w-2.5 h-0.5 bg-slate-400 border-t border-dashed border-slate-500 inline-block" />
-            <span>Candidate Routes</span>
+            <span>{t('radar.candidateRoutesLegend')}</span>
           </div>
         </div>
       </div>
 
       {/* Vector disclaimer footnote */}
       <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center italic">
-        Straight-line geographic distance vectors from farm origin (not road navigation routes).
+        {t('radar.disclaimer')}
       </p>
 
       {/* Economic Selection Callout (Level 4: Market Price -> Transport -> Net Return) */}
@@ -365,12 +367,12 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
               </span>
               {activeCandidate.rank === 1 && (
                 <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                  Top Recommendation
+                  {t('radar.topRecommendationBadge')}
                 </span>
               )}
             </div>
             <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
-              {activeCandidate.distanceKm} km away
+              {t('radar.kmAway', { distance: activeCandidate.distanceKm })}
             </span>
           </div>
 
@@ -378,7 +380,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
           <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-earth-200/60 dark:border-slate-800">
             <div className="p-1.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-100 dark:border-slate-700/60">
               <span className="text-[9px] uppercase font-bold text-slate-400 block">
-                Market Price
+                {t('radar.marketPrice')}
               </span>
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-heading">
                 ₹{activeCandidate.currentPrice.toLocaleString('en-IN')}/q
@@ -387,7 +389,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
 
             <div className="p-1.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-100 dark:border-slate-700/60">
               <span className="text-[9px] uppercase font-bold text-slate-400 block">
-                Transit Impact
+                {t('radar.transitImpact')}
               </span>
               <span className="text-xs font-bold text-amber-700 dark:text-amber-400 font-heading">
                 -₹{Math.round(activeCandidate.totalTransportCost).toLocaleString('en-IN')}
@@ -396,7 +398,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
 
             <div className="p-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
               <span className="text-[9px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">
-                Net Return
+                {t('radar.netReturn')}
               </span>
               <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 font-heading">
                 ₹{Math.round(activeCandidate.riskAdjustedReturn).toLocaleString('en-IN')}

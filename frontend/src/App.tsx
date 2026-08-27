@@ -7,10 +7,13 @@ import { AnalysisFormPage } from './pages/AnalysisFormPage';
 import { ResultsDashboardPage } from './pages/ResultsDashboardPage';
 import type { AnalysisResult } from './types';
 import { Sprout, Sun, Moon, Sparkles, RefreshCw } from 'lucide-react';
+import { useTranslation } from './i18n';
+import { LanguageToggle } from './components/LanguageToggle';
 
 export const App: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const { t } = useTranslation();
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -33,14 +36,14 @@ export const App: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white font-heading">
-                  FasalDisha <span className="text-agri-700 dark:text-agri-400 font-normal text-sm sm:inline hidden font-sans">| फसल दिशा</span>
+                  {t('nav.brandName')} <span className="text-agri-700 dark:text-agri-400 font-normal text-sm sm:inline hidden font-sans">{t('nav.brandHindiSuffix')}</span>
                 </span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-agri-100 dark:bg-agri-950/80 text-agri-800 dark:text-agri-300 border border-agri-200 dark:border-agri-800 hidden sm:inline-block">
-                  AI Decision Engine
+                  {t('nav.aiEngineBadge')}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
-                AI Mandi Price Forecasting & Cross-Boundary Market Routing
+                {t('nav.tagline')}
               </p>
             </div>
           </div>
@@ -53,15 +56,19 @@ export const App: React.FC = () => {
                 className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-agri-50 dark:bg-agri-950/50 hover:bg-agri-100 text-agri-800 dark:text-agri-300 border border-agri-200 dark:border-agri-800 transition cursor-pointer shadow-2xs"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>New Search</span>
+                <span>{t('nav.newSearch')}</span>
               </button>
             )}
+
+            {/* Language Toggle Control */}
+            <LanguageToggle />
 
             <button
               type="button"
               onClick={toggleDarkMode}
               className="p-2 rounded-xl bg-earth-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-earth-200 dark:hover:bg-slate-700 transition cursor-pointer"
-              title="Toggle Theme"
+              title={t('nav.toggleTheme')}
+              aria-label={t('nav.toggleTheme')}
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
@@ -86,14 +93,14 @@ export const App: React.FC = () => {
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
           <span className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-400">
             <Sparkles className="w-3 h-3 text-agri-600 dark:text-agri-400" />
-            FasalDisha Intelligence Core
+            {t('footer.coreIntelligence')}
           </span>
           <span>•</span>
-          <span>APMC Mandi Real Pricing</span>
+          <span>{t('footer.apmcPricing')}</span>
           <span>•</span>
-          <span>7-Day ML Price Forecasting</span>
+          <span>{t('footer.mlForecasting')}</span>
           <span>•</span>
-          <span>Weather & Transport Optimization</span>
+          <span>{t('footer.weatherOptimization')}</span>
         </div>
       </footer>
     </div>
@@ -101,3 +108,4 @@ export const App: React.FC = () => {
 };
 
 export default App;
+

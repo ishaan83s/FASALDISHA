@@ -5,6 +5,7 @@
 import React from 'react';
 import type { Commodity, PerishabilityClass } from '../types';
 import { Leaf, Clock, AlertTriangle } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 interface CommoditySelectorProps {
   commodities: Commodity[];
@@ -19,35 +20,38 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
   loading,
   onSelectCommodity,
 }) => {
+  const { t, translateCrop, translateCategory, translatePerishability } = useLanguage();
+
   const getPerishabilityBadge = (pClass: PerishabilityClass) => {
+    const info = translatePerishability(pClass);
     switch (pClass) {
       case 'HIGHLY_PERISHABLE':
         return {
-          label: 'Highly Perishable',
+          label: info.label,
           color: 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800',
           icon: <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />,
-          desc: '1-3 day holding limit; high spoilage risk',
+          desc: info.desc,
         };
       case 'MODERATELY_PERISHABLE':
         return {
-          label: 'Moderately Perishable',
+          label: info.label,
           color: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800',
           icon: <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />,
-          desc: '1-2 week storage with proper ventilation',
+          desc: info.desc,
         };
       case 'NON_PERISHABLE':
         return {
-          label: 'Non-Perishable / Durable',
+          label: info.label,
           color: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
           icon: <Leaf className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />,
-          desc: 'Extended holding allowed for peak price capture',
+          desc: info.desc,
         };
       default:
         return {
-          label: 'Standard',
+          label: info.label || t('commodity.perishability.standard'),
           color: 'bg-gray-100 text-gray-800',
           icon: null,
-          desc: '',
+          desc: info.desc,
         };
     }
   };
@@ -58,7 +62,7 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-          Commodity
+          {t('commodity.label')}
         </label>
         <select
           id="commodity-select"
@@ -68,11 +72,11 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
           className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 transition duration-150"
         >
           <option value="" disabled>
-            {loading ? 'Loading catalog...' : '-- Select Commodity --'}
+            {loading ? t('commodity.loadingCatalog') : t('commodity.selectPrompt')}
           </option>
           {commodities.map((c) => (
             <option key={c.commodityId} value={c.commodityId}>
-              {c.commodityName} ({c.commodityCategory}) — {c.perishabilityClass.replace('_', ' ')}
+              {translateCrop(c.commodityName)} ({translateCategory(c.commodityCategory)}) — {translatePerishability(c.perishabilityClass).label}
             </option>
           ))}
         </select>
@@ -86,7 +90,7 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                {selectedCommodity.commodityName} ({selectedCommodity.commodityCategory})
+                {translateCrop(selectedCommodity.commodityName)} ({translateCategory(selectedCommodity.commodityCategory)})
               </span>
               <span
                 className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
@@ -105,3 +109,4 @@ export const CommoditySelector: React.FC<CommoditySelectorProps> = ({
     </div>
   );
 };
+

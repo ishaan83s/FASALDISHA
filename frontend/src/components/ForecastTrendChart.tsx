@@ -5,6 +5,7 @@
  */
 import React from 'react';
 import type { ForecastOutput } from '../types';
+import { useLanguage } from '../i18n';
 import { TrendingUp, Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface ForecastTrendChartProps {
@@ -16,6 +17,7 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
   forecast,
   commodityName,
 }) => {
+  const { t, translateCrop } = useLanguage();
   const dailyPoints = forecast.dailyForecast || [];
   const maxPrice = Math.max(
     forecast.currentPrice,
@@ -40,11 +42,11 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
           <div className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             <h2 className="text-lg font-bold text-slate-900 dark:text-white font-heading">
-              Expected Price Trend (Day 1 → Day 7 Horizon)
+              {t('forecast.title')}
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            AI price projection for {commodityName} based on historical mandi patterns and weather signals.
+            {t('forecast.subtitle', { commodity: translateCrop(commodityName) })}
           </p>
         </div>
 
@@ -52,12 +54,18 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
         {forecast.peakAlert ? (
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/80 rounded-2xl text-amber-900 dark:text-amber-200 text-xs font-bold shadow-2xs">
             <Sparkles className="w-4 h-4 text-amber-500" />
-            <span>Peak Day {forecast.peakDay}: ₹{forecast.expectedPeakPrice.toLocaleString('en-IN')}/q (+{gainPercent}%)</span>
+            <span>
+              {t('forecast.peakAlertBadge', {
+                day: forecast.peakDay,
+                price: forecast.expectedPeakPrice.toLocaleString('en-IN'),
+                percent: gainPercent,
+              })}
+            </span>
           </div>
         ) : (
           <div className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-600 dark:text-slate-300 text-xs font-semibold">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Steady Price Horizon</span>
+            <span>{t('forecast.steadyTrajectoryBadge')}</span>
           </div>
         )}
       </div>
@@ -65,27 +73,27 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
       {/* 3 Metric Pills */}
       <div className="grid grid-cols-3 gap-2.5 text-xs">
         <div className="p-3 bg-earth-50 dark:bg-slate-900/60 rounded-2xl border border-earth-200/80 dark:border-slate-800 text-center">
-          <span className="text-slate-400 text-[10px] uppercase font-bold block">Current Modal</span>
+          <span className="text-slate-400 text-[10px] uppercase font-bold block">{t('forecast.currentModalLabel')}</span>
           <span className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white font-heading">
             ₹{forecast.currentPrice.toLocaleString('en-IN')}
           </span>
-          <span className="text-[10px] text-slate-400 block">Today's baseline</span>
+          <span className="text-[10px] text-slate-400 block">{t('forecast.todayBaseline')}</span>
         </div>
 
         <div className="p-3 bg-earth-50 dark:bg-slate-900/60 rounded-2xl border border-earth-200/80 dark:border-slate-800 text-center">
-          <span className="text-slate-400 text-[10px] uppercase font-bold block">Day 3 Forecast</span>
+          <span className="text-slate-400 text-[10px] uppercase font-bold block">{t('forecast.day3Label')}</span>
           <span className="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 font-heading">
             ₹{forecast.forecast3Day.toLocaleString('en-IN')}
           </span>
-          <span className="text-[10px] text-slate-400 block">72-hr projection</span>
+          <span className="text-[10px] text-slate-400 block">{t('forecast.day3Subtext')}</span>
         </div>
 
         <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-800/60 text-center">
-          <span className="text-amber-800 dark:text-amber-300 text-[10px] uppercase font-bold block">Expected Peak</span>
+          <span className="text-amber-800 dark:text-amber-300 text-[10px] uppercase font-bold block">{t('forecast.expectedPeakLabel')}</span>
           <span className="text-base sm:text-lg font-black text-amber-900 dark:text-amber-200 font-heading">
             ₹{forecast.expectedPeakPrice.toLocaleString('en-IN')}
           </span>
-          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block">Day {forecast.peakDay}</span>
+          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 block">{t('forecast.dayLabel', { day: forecast.peakDay })}</span>
         </div>
       </div>
 
@@ -93,9 +101,9 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
       {dailyPoints.length > 0 && (
         <div className="pt-2">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-            <span>Daily Price Trajectory (₹/Quintal)</span>
+            <span>{t('forecast.dailyTrajectoryHeading')}</span>
             <span title="Forecast confidence is a model reliability heuristic for this forecast horizon.">
-              Model Reliability: {Math.round(forecast.forecastConfidence * 100)}%
+              {t('forecast.modelReliability', { percent: Math.round(forecast.forecastConfidence * 100) })}
             </span>
           </div>
 
@@ -117,7 +125,7 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
                   }`}
                 >
                   <span className={`text-[11px] font-bold ${isPeak ? 'text-amber-800 dark:text-amber-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                    Day {dp.day}
+                    {t('forecast.dayLabel', { day: dp.day })}
                   </span>
 
                   {/* Vertical bar */}
@@ -144,8 +152,10 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
 
       {/* Provenance note */}
       <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-        <span>Basis: {forecast.historySourceLabel}</span>
-        <span>Model: {forecast.modelType === 'LIVE' ? 'Live ML Inference' : 'Precomputed Fallback'}</span>
+        <span>{t('forecast.basisPrefix', { source: forecast.historySourceLabel })}</span>
+        <span>
+          Model: {forecast.modelType === 'LIVE' ? t('forecast.modelTypeLive') : t('forecast.modelTypePrecomputed')}
+        </span>
       </div>
     </div>
   );

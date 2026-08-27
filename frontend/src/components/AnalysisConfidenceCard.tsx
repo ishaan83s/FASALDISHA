@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import type { DecisionOutput, RiskSummary, ForecastOutput, SearchMetadata } from '../types';
+import { useLanguage } from '../i18n';
 import { ShieldCheck, TrendingUp, Store, CloudSun, CheckCircle2 } from 'lucide-react';
 
 interface AnalysisConfidenceCardProps {
@@ -19,12 +20,13 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
   forecast,
   search,
 }) => {
+  const { t, translateRiskLevel } = useLanguage();
   const confidencePercent = Math.round(decision.decisionConfidence * 100);
 
   const getConfidenceLevelText = (val: number) => {
-    if (val >= 80) return { label: 'High Confidence', color: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' };
-    if (val >= 60) return { label: 'Moderate Confidence', color: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' };
-    return { label: 'Baseline Heuristic', color: 'text-slate-600 dark:text-slate-400', bar: 'bg-slate-500' };
+    if (val >= 80) return { label: t('confidence.highConfidence'), color: 'text-emerald-600 dark:text-emerald-400', bar: 'bg-emerald-500' };
+    if (val >= 60) return { label: t('confidence.moderateConfidence'), color: 'text-amber-600 dark:text-amber-400', bar: 'bg-amber-500' };
+    return { label: t('confidence.baselineHeuristic'), color: 'text-slate-600 dark:text-slate-400', bar: 'bg-slate-500' };
   };
 
   const status = getConfidenceLevelText(confidencePercent);
@@ -36,7 +38,7 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-            Analysis Confidence
+            {t('confidence.title')}
           </h3>
         </div>
 
@@ -54,14 +56,14 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           />
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Composite score evaluating regional market spreads, model reliability heuristics, and transit risks.
+          {t('confidence.compositeScoreDesc')}
         </p>
       </div>
 
       {/* Multi-Factor Support Breakdown */}
       <div className="space-y-2 pt-1 text-xs">
         <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
-          Decision Signals Considered
+          {t('confidence.decisionSignalsTitle')}
         </span>
 
         <div className="grid grid-cols-2 gap-2">
@@ -69,9 +71,9 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           <div className="p-2.5 bg-earth-50 dark:bg-slate-900/60 rounded-xl border border-earth-200/80 dark:border-slate-800 flex items-start gap-2">
             <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">Price Forecast</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">{t('confidence.priceForecastSignal')}</span>
               <span className="text-[10px] text-slate-400" title="Forecast confidence is a model reliability heuristic for this forecast horizon.">
-                {Math.round(forecast.forecastConfidence * 100)}% Model Reliability
+                {t('confidence.modelReliabilitySub', { percent: Math.round(forecast.forecastConfidence * 100) })}
               </span>
             </div>
           </div>
@@ -80,9 +82,9 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           <div className="p-2.5 bg-earth-50 dark:bg-slate-900/60 rounded-xl border border-earth-200/80 dark:border-slate-800 flex items-start gap-2">
             <Store className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">Market Density</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">{t('confidence.marketDensitySignal')}</span>
               <span className="text-[10px] text-slate-400">
-                {search.candidateCount} APMC Candidates
+                {t('confidence.apmcCandidatesSub', { count: search.candidateCount })}
               </span>
             </div>
           </div>
@@ -91,9 +93,9 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           <div className="p-2.5 bg-earth-50 dark:bg-slate-900/60 rounded-xl border border-earth-200/80 dark:border-slate-800 flex items-start gap-2">
             <CloudSun className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">Weather & Route</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">{t('confidence.weatherRouteSignal')}</span>
               <span className="text-[10px] text-slate-400">
-                {riskSummary.riskLevel} Risk Monitored
+                {t('confidence.riskMonitoredSub', { risk: translateRiskLevel(riskSummary.riskLevel) })}
               </span>
             </div>
           </div>
@@ -102,9 +104,9 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           <div className="p-2.5 bg-earth-50 dark:bg-slate-900/60 rounded-xl border border-earth-200/80 dark:border-slate-800 flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">Data Quality</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">{t('confidence.dataQualitySignal')}</span>
               <span className="text-[10px] text-slate-400">
-                {riskSummary.dataCompleteness}% Verified
+                {t('confidence.verifiedSub', { percent: riskSummary.dataCompleteness })}
               </span>
             </div>
           </div>

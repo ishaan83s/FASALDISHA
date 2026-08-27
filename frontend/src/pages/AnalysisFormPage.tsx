@@ -9,6 +9,7 @@ import { GeographySelector } from '../components/GeographySelector';
 import { LocationPicker } from '../components/LocationPicker';
 import { CommoditySelector } from '../components/CommoditySelector';
 import { AnalysisLoadingModal } from '../components/AnalysisLoadingModal';
+import { useLanguage } from '../i18n';
 import {
   ArrowRight,
   AlertCircle,
@@ -29,6 +30,7 @@ const RADIUS_OPTIONS = [50, 100, 120, 150, 200];
 export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   onAnalysisComplete,
 }) => {
+  const { t, translateCrop } = useLanguage();
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [commodities, setCommodities] = useState<Commodity[]>([]);
@@ -74,13 +76,13 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         const dists = await apiClient.getDistricts('maharashtra');
         setDistricts(dists);
       } catch (err: any) {
-        setErrorMsg(`Failed to load catalogs: ${err.message}`);
+        setErrorMsg(t('form.validations.failedCatalogs', { error: err.message }));
         setLoadingStates(false);
         setLoadingCommodities(false);
       }
     }
     initCatalog();
-  }, []);
+  }, [t]);
 
   const handleSelectState = async (stateId: string) => {
     // Invalidate any in-flight GPS resolution
@@ -110,7 +112,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         }));
       }
     } catch (err: any) {
-      setErrorMsg(`Failed to load districts: ${err.message}`);
+      setErrorMsg(t('form.validations.failedDistricts', { error: err.message }));
     } finally {
       setLoadingDistricts(false);
     }
@@ -215,11 +217,11 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!location.stateId || !location.districtId || !selectedCommodityId) {
-      setErrorMsg('Please select your state, district, and crop.');
+      setErrorMsg(t('form.validations.selectStateDistrictCrop'));
       return;
     }
     if (quantityQuintals <= 0) {
-      setErrorMsg('Quantity must be greater than 0 quintals.');
+      setErrorMsg(t('form.validations.quantityPositive'));
       return;
     }
 
@@ -247,7 +249,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         setSubmitting(false);
       }, 700);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Analysis run failed. Please check backend connection.');
+      setErrorMsg(err.message || t('form.validations.analysisFailed'));
       setSubmitting(false);
     }
   };
@@ -258,20 +260,20 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Animated Loading Overlay */}
       {submitting && (
-        <AnalysisLoadingModal commodityName={currentCrop?.commodityName || 'Crop'} />
+        <AnalysisLoadingModal commodityName={currentCrop ? translateCrop(currentCrop.commodityName) : 'Crop'} />
       )}
 
       {/* Hero Title & Value Proposition */}
       <div className="text-center space-y-2 pt-1">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-agri-100 dark:bg-agri-950/70 text-agri-800 dark:text-agri-300 border border-agri-200 dark:border-agri-800">
           <Sprout className="w-3.5 h-3.5 text-agri-600 dark:text-agri-400" />
-          Smart Agricultural Mandi Advisor
+          {t('form.badge')}
         </span>
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight font-heading">
-          Where & When Should You Sell Your Harvest?
+          {t('form.heroTitle')}
         </h1>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto leading-relaxed">
-          Get transparent, risk-adjusted market rankings, 7-day AI price forecasts, transit economics, and weather alerts in seconds.
+          {t('form.heroSubtitle')}
         </p>
       </div>
 
@@ -291,7 +293,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-agri-700 dark:text-agri-400">
             <MapPin className="w-4 h-4 text-agri-600 dark:text-agri-400" />
-            <span>1. Where are you? (Location & District)</span>
+            <span>{t('form.step1Title')}</span>
           </div>
 
           <GeographySelector
@@ -318,7 +320,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-agri-700 dark:text-agri-400">
             <Wheat className="w-4 h-4 text-agri-600 dark:text-agri-400" />
-            <span>2. What are you selling? (Crop & Perishability)</span>
+            <span>{t('form.step2Title')}</span>
           </div>
 
           <CommoditySelector
@@ -333,13 +335,13 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
         <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-agri-700 dark:text-agri-400">
             <Scale className="w-4 h-4 text-agri-600 dark:text-agri-400" />
-            <span>3. How much harvest do you have?</span>
+            <span>{t('form.step3Title')}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Harvest Quantity (Quintals)
+                {t('form.harvestQuantityLabel')}
               </label>
               <div className="relative">
                 <input
@@ -353,7 +355,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
                   required
                 />
                 <span className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs text-slate-400 font-medium">
-                  Quintals
+                  {t('form.harvestQuantityUnit')}
                 </span>
               </div>
             </div>
@@ -361,13 +363,13 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                 <Sliders className="w-3.5 h-3.5 text-slate-400" />
-                <span>Custom Transport Rate (Optional)</span>
+                <span>{t('form.customTransportLabel')}</span>
               </label>
               <input
                 id="transport-rate-input"
                 type="number"
                 step="0.1"
-                placeholder="Default: ₹2.5 / Quintal / km"
+                placeholder={t('form.customTransportPlaceholder')}
                 value={customTransportRate}
                 onChange={(e) => setCustomTransportRate(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-earth-50/70 dark:bg-slate-900/80 border border-earth-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-agri-500 focus:bg-white dark:focus:bg-[#151c24] transition"
@@ -380,9 +382,9 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-agri-700 dark:text-agri-400 flex items-center gap-1.5">
                 <Compass className="w-4 h-4 text-agri-600 dark:text-agri-400" />
-                <span>4. How far can you travel? ({radiusKm} km)</span>
+                <span>{t('form.step4Title', { radius: radiusKm })}</span>
               </label>
-              <span className="text-[11px] text-slate-400">Max 300 km radius</span>
+              <span className="text-[11px] text-slate-400">{t('form.maxRadiusNote')}</span>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -397,7 +399,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
                       : 'bg-earth-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-earth-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  {r} km
+                  {r} {t('form.kmUnit')}
                 </button>
               ))}
             </div>
@@ -412,7 +414,7 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
             disabled={submitting}
             className="w-full py-4 px-6 bg-agri-700 hover:bg-agri-800 active:scale-[0.99] text-white font-extrabold rounded-2xl shadow-lg shadow-agri-900/20 flex items-center justify-center gap-2.5 text-base transition-all duration-150 cursor-pointer disabled:opacity-50 font-heading"
           >
-            <span>Find My Best Market & Profit</span>
+            <span>{t('form.ctaButton')}</span>
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>
@@ -420,3 +422,4 @@ export const AnalysisFormPage: React.FC<AnalysisFormPageProps> = ({
     </div>
   );
 };
+

@@ -5,6 +5,7 @@
 import React from 'react';
 import type { AnalysisResult } from '../types';
 import { ArrowLeft, MapPin, Wheat, Scale, Compass, CalendarCheck } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 interface LocationContextBarProps {
   result: AnalysisResult;
@@ -15,7 +16,10 @@ export const LocationContextBar: React.FC<LocationContextBarProps> = ({
   result,
   onModifySearch,
 }) => {
+  const { t, translateCrop, translateDistrict, translateState, translatePerishability } = useLanguage();
   const { farmerContext, commodity, forecast } = result;
+
+  const perishabilityInfo = translatePerishability(commodity.perishabilityClass);
 
   const getPerishabilityColor = (pClass: string) => {
     switch (pClass) {
@@ -40,13 +44,13 @@ export const LocationContextBar: React.FC<LocationContextBarProps> = ({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-earth-100 dark:bg-slate-800 hover:bg-earth-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Change Inputs</span>
+          <span>{t('contextBar.changeInputs')}</span>
         </button>
 
         <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
           <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
           <span className="capitalize font-bold text-slate-900 dark:text-white">
-            {farmerContext.districtId}, {farmerContext.stateId}
+            {translateDistrict(farmerContext.districtId)}, {translateState(farmerContext.stateId)}
           </span>
           <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
             ({farmerContext.latitude.toFixed(2)}°N, {farmerContext.longitude.toFixed(2)}°E)
@@ -59,28 +63,28 @@ export const LocationContextBar: React.FC<LocationContextBarProps> = ({
         {/* Commodity Badge */}
         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-agri-50 dark:bg-agri-950/50 border border-agri-200 dark:border-agri-800/80 font-bold text-agri-800 dark:text-agri-300">
           <Wheat className="w-3.5 h-3.5 text-agri-600 dark:text-agri-400" />
-          <span>{commodity.commodityName}</span>
+          <span>{translateCrop(commodity.commodityName)}</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-md font-semibold border ${getPerishabilityColor(commodity.perishabilityClass)}`}>
-            {commodity.perishabilityClass.replace(/_/g, ' ')}
+            {perishabilityInfo.label}
           </span>
         </span>
 
         {/* Quantity */}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
           <Scale className="w-3.5 h-3.5 text-slate-400" />
-          <strong>{farmerContext.quantityQuintals} Quintals</strong>
+          <strong>{t('contextBar.quintals', { count: farmerContext.quantityQuintals })}</strong>
         </span>
 
         {/* Radius */}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium">
           <Compass className="w-3.5 h-3.5 text-slate-400" />
-          <span>{farmerContext.radiusKm} km radius</span>
+          <span>{t('contextBar.kmRadius', { radius: farmerContext.radiusKm })}</span>
         </span>
 
         {/* Best Day Pill */}
         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 font-bold">
           <CalendarCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-          <span>Best Day: Day {forecast.peakDay}</span>
+          <span>{t('contextBar.bestDayPill', { day: forecast.peakDay })}</span>
         </span>
       </div>
     </div>

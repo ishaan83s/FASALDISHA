@@ -2,32 +2,37 @@
  * AnalysisLoadingModal Component: Multi-step Intelligent Progress Experience.
  * SSOT Reference: Prompt Section 13 "Loading State".
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Loader2, CheckCircle2, Circle, Sparkles, Sprout } from 'lucide-react';
+import { useLanguage } from '../i18n';
 
 interface AnalysisLoadingModalProps {
   commodityName?: string;
 }
 
-const STEPS = [
-  { id: 1, label: 'Discovering nearby APMC mandis within radius' },
-  { id: 2, label: 'Running AI price forecasts & peak horizon detection' },
-  { id: 3, label: 'Checking weather radar & transit road delays' },
-  { id: 4, label: 'Computing transport costs & risk-adjusted net returns' },
-  { id: 5, label: 'Ranking best markets and generating farmer recommendation' },
-];
-
 export const AnalysisLoadingModal: React.FC<AnalysisLoadingModalProps> = ({
   commodityName = 'Crop',
 }) => {
+  const { t, translateCrop } = useLanguage();
   const [activeStep, setActiveStep] = useState<number>(1);
+
+  const steps = useMemo(
+    () => [
+      { id: 1, label: t('loading.step1') },
+      { id: 2, label: t('loading.step2') },
+      { id: 3, label: t('loading.step3') },
+      { id: 4, label: t('loading.step4') },
+      { id: 5, label: t('loading.step5') },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveStep((prev) => (prev < STEPS.length ? prev + 1 : prev));
+      setActiveStep((prev) => (prev < steps.length ? prev + 1 : prev));
     }, 450);
     return () => clearInterval(interval);
-  }, []);
+  }, [steps.length]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
@@ -38,16 +43,16 @@ export const AnalysisLoadingModal: React.FC<AnalysisLoadingModalProps> = ({
             <Sprout className="w-8 h-8 animate-bounce text-agri-600 dark:text-agri-400" />
           </div>
           <h3 className="text-xl font-bold text-slate-900 dark:text-white font-heading">
-            Analyzing Your {commodityName}...
+            {t('loading.analyzingTitle', { commodity: translateCrop(commodityName) })}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            FasalDisha AI Decision Engine is evaluating real-time market economics.
+            {t('loading.subtitle')}
           </p>
         </div>
 
         {/* Step-by-Step Progress List */}
         <div className="space-y-3 bg-earth-50/70 dark:bg-slate-900/60 p-4 rounded-2xl border border-earth-200/80 dark:border-slate-800 text-xs">
-          {STEPS.map((step) => {
+          {steps.map((step) => {
             const isDone = activeStep > step.id;
             const isCurrent = activeStep === step.id;
 
@@ -78,9 +83,10 @@ export const AnalysisLoadingModal: React.FC<AnalysisLoadingModalProps> = ({
         {/* Footer info */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Cross-district APMCs & dynamic transport rate active</span>
+          <span>{t('loading.footerNote')}</span>
         </div>
       </div>
     </div>
   );
 };
+

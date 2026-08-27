@@ -5,6 +5,7 @@
  */
 import React, { useState } from 'react';
 import type { AnalysisResult } from '../types';
+import { useLanguage } from '../i18n';
 import {
   ChevronDown,
   ChevronUp,
@@ -22,10 +23,19 @@ interface WhyRecommendationDrawerProps {
 export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = ({
   result,
 }) => {
+  const { t, translateDemand, translateClassification } = useLanguage();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const { decision, forecast, dataProvenance, nearbyMandis } = result;
 
   const topMandi = nearbyMandis[0];
+
+  const getTrainingBasisText = () => {
+    let basis = t('audit.historicalBaseline');
+    if (forecast.historyClassification === 'SYNTHETIC') basis = t('audit.syntheticBaseline');
+    else if (forecast.historyClassification === 'SEEDED') basis = t('audit.seededBaseline');
+    const windowText = t('audit.daySeries', { days: forecast.historyWindowDays });
+    return `${basis} (${windowText})`;
+  };
 
   return (
     <div className="bg-white dark:bg-[#151c24] border border-earth-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm transition-all">
@@ -41,16 +51,16 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-              Why We Recommend This (Decision & Logic Audit Trail)
+              {t('audit.drawerTitle')}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Inspect the 4 mathematical pillars, buyer signals, weather overrides, and ML data provenance.
+              {t('audit.drawerSubtitle')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs font-bold text-agri-700 dark:text-agri-400">
-          <span>{isOpen ? 'Collapse Details' : 'View Audit Trail'}</span>
+          <span>{isOpen ? t('audit.collapseDetails') : t('audit.viewAuditTrail')}</span>
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </button>
@@ -63,31 +73,31 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
             <div className="p-4 bg-earth-50/70 dark:bg-slate-900/70 rounded-2xl border border-earth-200 dark:border-slate-800 space-y-2.5">
               <div className="flex items-center gap-2 text-agri-700 dark:text-agri-400 font-bold font-heading text-sm">
                 <Scale className="w-4 h-4" />
-                <span>1. Multi-Factor Ranking Formula</span>
+                <span>{t('audit.pillar1Title')}</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-                Mandis are ranked deterministically:
+                {t('audit.pillar1Desc')}
                 <br />
                 <code className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-slate-800 dark:text-slate-200">
-                  Score = (0.70 × NetReturn) + (0.20 × BuyerScore) + (0.10 × DataQuality)
+                  {t('audit.pillar1Formula')}
                 </code>
               </p>
               {topMandi && topMandi.rankingBreakdown && (
                 <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Net Return Subscore (70%):</span>
+                    <span className="text-slate-500">{t('audit.netReturnSubscore')}</span>
                     <strong className="text-agri-600 dark:text-agri-400">{topMandi.rankingBreakdown.normalizedRiskAdjustedReturn}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Buyer Signal Subscore (20%):</span>
+                    <span className="text-slate-500">{t('audit.buyerSignalSubscore')}</span>
                     <strong className="text-blue-600 dark:text-blue-400">{topMandi.rankingBreakdown.buyerSignalScore}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Data Quality Subscore (10%):</span>
+                    <span className="text-slate-500">{t('audit.dataQualitySubscore')}</span>
                     <strong className="text-purple-600 dark:text-purple-400">{topMandi.rankingBreakdown.dataQualityScore}</strong>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-700 font-bold">
-                    <span>Composite Final Score:</span>
+                    <span>{t('audit.compositeFinalScore')}</span>
                     <span>{topMandi.rankingScore} / 100</span>
                   </div>
                 </div>
@@ -98,32 +108,32 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
             <div className="p-4 bg-earth-50/70 dark:bg-slate-900/70 rounded-2xl border border-earth-200 dark:border-slate-800 space-y-2.5">
               <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold font-heading text-sm">
                 <Users className="w-4 h-4" />
-                <span>2. Buyer Liquidity & Signals</span>
+                <span>{t('audit.pillar2Title')}</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-                Buyer signals measure market liquidity and purchasing power:
+                {t('audit.pillar2Desc')}
                 <br />
                 <code className="bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-slate-800 dark:text-slate-200">
-                  BuyerScore = (0.35 × Demand) + (0.25 × Count) + (0.20 × Offer) + (0.20 × Reliability)
+                  {t('audit.pillar2Formula')}
                 </code>
               </p>
               {topMandi && (
                 <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Active Verified Buyers:</span>
+                    <span className="text-slate-500">{t('audit.activeVerifiedBuyers')}</span>
                     <strong className="text-slate-800 dark:text-slate-200">{topMandi.buyerSignal.activeBuyerCount} Buyers</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Demand Category:</span>
-                    <strong className="text-slate-800 dark:text-slate-200">{topMandi.buyerSignal.demandLevel}</strong>
+                    <span className="text-slate-500">{t('audit.demandCategory')}</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{translateDemand(topMandi.buyerSignal.demandLevel)}</strong>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Offer / Reliability Index:</span>
+                    <span className="text-slate-500">{t('audit.offerReliabilityIndex')}</span>
                     <strong className="text-slate-800 dark:text-slate-200">{topMandi.buyerSignal.offerStrength} / {topMandi.buyerSignal.reliability}</strong>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-700 text-slate-400 text-[10px]">
-                    <span>Classification:</span>
-                    <span className="font-mono bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-1 rounded">{dataProvenance.buyerDataClassification}</span>
+                    <span>{t('audit.classification')}</span>
+                    <span className="font-mono bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-1 rounded">{translateClassification(dataProvenance.buyerDataClassification)}</span>
                   </div>
                 </div>
               )}
@@ -133,24 +143,24 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
             <div className="p-4 bg-earth-50/70 dark:bg-slate-900/70 rounded-2xl border border-earth-200 dark:border-slate-800 space-y-2.5">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold font-heading text-sm">
                 <CloudSun className="w-4 h-4" />
-                <span>3. Risk Override Logic</span>
+                <span>{t('audit.pillar3Title')}</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-                Perishability classification directly dictates risk thresholds. When severe weather threatens transit corridors, HOLD recommendations are safely converted to SELL EARLY.
+                {t('audit.pillar3Desc')}
               </p>
               <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Base Algorithm Decision:</span>
+                  <span className="text-slate-500">{t('audit.baseAlgorithmDecision')}</span>
                   <strong className="text-slate-800 dark:text-slate-200 font-mono">{decision.baseDecision}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Risk Override Triggered:</span>
+                  <span className="text-slate-500">{t('audit.riskOverrideTriggered')}</span>
                   <strong className={decision.riskOverrideApplied ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}>
-                    {decision.riskOverrideApplied ? 'YES (Triggered for Safety)' : 'NO (Normal Trajectory)'}
+                    {decision.riskOverrideApplied ? t('audit.overrideYes') : t('audit.overrideNo')}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Final Actionable Advice:</span>
+                  <span className="text-slate-500">{t('audit.finalActionableAdvice')}</span>
                   <strong className="text-agri-600 dark:text-agri-400 font-mono">{decision.finalRecommendation}</strong>
                 </div>
               </div>
@@ -160,34 +170,30 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
             <div className="p-4 bg-earth-50/70 dark:bg-slate-900/70 rounded-2xl border border-earth-200 dark:border-slate-800 space-y-2.5">
               <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 font-bold font-heading text-sm">
                 <BrainCircuit className="w-4 h-4" />
-                <span>4. Machine Learning Provenance</span>
+                <span>{t('audit.pillar4Title')}</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-                Price projections are computed via live in-memory XGBoost regression trained on regional market patterns, evaluating a 7-day price trajectory with peak horizon detection.
+                {t('audit.pillar4Desc')}
               </p>
               <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Model Engine Type:</span>
+                  <span className="text-slate-500">{t('audit.modelEngineType')}</span>
                   <strong className="text-slate-800 dark:text-slate-200 font-mono">
                     {forecast.modelType === 'LIVE' ? 'Live ML Inference (XGBoost)' : 'Precomputed Series'}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Training / Data Basis:</span>
+                  <span className="text-slate-500">{t('audit.trainingDataBasis')}</span>
                   <strong className="text-slate-800 dark:text-slate-200">
-                    {forecast.historyClassification === 'SYNTHETIC'
-                      ? 'Synthetic Training Baseline'
-                      : forecast.historyClassification === 'SEEDED'
-                      ? 'Seeded Market Baseline'
-                      : 'Historical Series'} ({forecast.historyWindowDays}-Day Window)
+                    {getTrainingBasisText()}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Data Source Label:</span>
+                  <span className="text-slate-500">{t('audit.dataSourceLabel')}</span>
                   <span className="text-slate-600 dark:text-slate-300 text-[10px]">{forecast.historySourceLabel}</span>
                 </div>
                 <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-700">
-                  <span className="text-slate-500">Forecast Scope:</span>
+                  <span className="text-slate-500">{t('audit.forecastScope')}</span>
                   <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">{forecast.forecastScope}</span>
                 </div>
               </div>

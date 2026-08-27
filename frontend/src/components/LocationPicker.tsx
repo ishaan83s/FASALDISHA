@@ -2,10 +2,11 @@
  * LocationPicker Component: Handles authoritative coordinates, GPS geolocation, and judge demo presets.
  * SSOT Reference: 06_FRONTEND_CONTRACT.md Section 1 & 2
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Navigation, Sparkles, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
 import type { CanonicalLocation, ResolvedLocation } from '../types';
 import { apiClient } from '../api/client';
+import { useLanguage } from '../i18n';
 
 interface LocationPickerProps {
   location: CanonicalLocation;
@@ -39,65 +40,6 @@ interface ExamplePreset {
   badge: string;
 }
 
-const EXAMPLE_PRESETS: ExamplePreset[] = [
-  {
-    id: 'pune-onion',
-    name: 'Scenario A: Pune Onion (Weather Risk Override)',
-    title: 'Scenario A: Pune Onion',
-    description: 'Weather risk override demonstration',
-    stateId: 'maharashtra',
-    districtId: 'pune',
-    lat: 18.52,
-    lon: 73.85,
-    commodityId: 'onion',
-    quantityQuintals: 25,
-    radiusKm: 120,
-    badge: 'Risk Override',
-  },
-  {
-    id: 'nashik-tomato',
-    name: 'Scenario B: Tomato (Perishable vs Non-Perishable Urgency)',
-    title: 'Scenario B: Nashik Tomato',
-    description: 'Perishable vs non-perishable urgency',
-    stateId: 'maharashtra',
-    districtId: 'nashik',
-    lat: 20.00,
-    lon: 73.78,
-    commodityId: 'tomato',
-    quantityQuintals: 15,
-    radiusKm: 100,
-    badge: 'High Perishability',
-  },
-  {
-    id: 'kota-wheat',
-    name: 'Scenario C: Wheat (Non-Perishable Normal Hold)',
-    title: 'Scenario C: Kota Wheat',
-    description: 'Non-perishable standard hold analysis',
-    stateId: 'rajasthan',
-    districtId: 'kota',
-    lat: 25.18,
-    lon: 75.83,
-    commodityId: 'wheat',
-    quantityQuintals: 50,
-    radiusKm: 100,
-    badge: 'Standard Hold',
-  },
-  {
-    id: 'ahmedabad-cotton',
-    name: 'Scenario D: Ahmedabad (Multi-Mandi & Cross-Boundary)',
-    title: 'Scenario D: Ahmedabad Cotton',
-    description: 'Multi-mandi & cross-boundary discovery',
-    stateId: 'gujarat',
-    districtId: 'ahmedabad',
-    lat: 23.02,
-    lon: 72.57,
-    commodityId: 'cotton',
-    quantityQuintals: 30,
-    radiusKm: 150,
-    badge: 'Cross-Boundary',
-  },
-];
-
 export const LocationPicker: React.FC<LocationPickerProps> = ({
   location,
   onCoordinatesChange,
@@ -105,16 +47,79 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   onGpsResolved,
   onApplyDemoPreset,
 }) => {
+  const { t, translateState, translateDistrict } = useLanguage();
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoNotice, setGeoNotice] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   const activeGpsReqRef = React.useRef<number>(0);
 
+  const examplePresets: ExamplePreset[] = useMemo(
+    () => [
+      {
+        id: 'pune-onion',
+        name: 'Scenario A: Pune Onion (Weather Risk Override)',
+        title: t('location.presets.puneOnionTitle'),
+        description: t('location.presets.puneOnionDesc'),
+        stateId: 'maharashtra',
+        districtId: 'pune',
+        lat: 18.52,
+        lon: 73.85,
+        commodityId: 'onion',
+        quantityQuintals: 25,
+        radiusKm: 120,
+        badge: t('location.presets.puneOnionBadge'),
+      },
+      {
+        id: 'nashik-tomato',
+        name: 'Scenario B: Tomato (Perishable vs Non-Perishable Urgency)',
+        title: t('location.presets.nashikTomatoTitle'),
+        description: t('location.presets.nashikTomatoDesc'),
+        stateId: 'maharashtra',
+        districtId: 'nashik',
+        lat: 20.0,
+        lon: 73.78,
+        commodityId: 'tomato',
+        quantityQuintals: 15,
+        radiusKm: 100,
+        badge: t('location.presets.nashikTomatoBadge'),
+      },
+      {
+        id: 'kota-wheat',
+        name: 'Scenario C: Wheat (Non-Perishable Normal Hold)',
+        title: t('location.presets.kotaWheatTitle'),
+        description: t('location.presets.kotaWheatDesc'),
+        stateId: 'rajasthan',
+        districtId: 'kota',
+        lat: 25.18,
+        lon: 75.83,
+        commodityId: 'wheat',
+        quantityQuintals: 50,
+        radiusKm: 100,
+        badge: t('location.presets.kotaWheatBadge'),
+      },
+      {
+        id: 'ahmedabad-cotton',
+        name: 'Scenario D: Ahmedabad (Multi-Mandi & Cross-Boundary)',
+        title: t('location.presets.ahmedabadCottonTitle'),
+        description: t('location.presets.ahmedabadCottonDesc'),
+        stateId: 'gujarat',
+        districtId: 'ahmedabad',
+        lat: 23.02,
+        lon: 72.57,
+        commodityId: 'cotton',
+        quantityQuintals: 30,
+        radiusKm: 150,
+        badge: t('location.presets.ahmedabadCottonBadge'),
+      },
+    ],
+    [t]
+  );
+
   const handleUseGeolocation = () => {
     setSelectedPresetId(null);
     if (!navigator.geolocation) {
-      setGeoError('Geolocation is not supported by your browser.');
+      setGeoError(t('location.gpsNotSupported'));
       setGeoNotice(null);
       return;
     }
@@ -139,20 +144,25 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           if (resolved.inSupportedRegion && resolved.districtId && resolved.stateId) {
             onGpsResolved(resolved, versionToken);
             setGeoNotice(
-              `GPS location matched to ${resolved.districtName}, ${resolved.stateName} (~${resolved.distanceKm?.toFixed(1) || 0} km from district reference centroid).`
+              t('location.gpsMatchedNotice', {
+                districtName: translateDistrict(resolved.districtName || resolved.districtId),
+                stateName: translateState(resolved.stateName || resolved.stateId),
+                distanceKm: resolved.distanceKm?.toFixed(1) || '0',
+              })
             );
             setGeoError(null);
           } else {
             setGeoError(
-              `GPS coordinates (${lat}°N, ${lon}°E) are outside supported coverage regions (Maharashtra, Gujarat, Rajasthan). Retaining your manual selection.`
+              t('location.gpsOutOfBoundsError', {
+                lat,
+                lon,
+              })
             );
             setGeoNotice(null);
           }
         } catch {
           if (reqId !== activeGpsReqRef.current) return;
-          setGeoError(
-            `Unable to verify GPS location against geography catalog. Retaining manual location selection.`
-          );
+          setGeoError(t('location.gpsCatalogError'));
           setGeoNotice(null);
         } finally {
           if (reqId === activeGpsReqRef.current) {
@@ -163,9 +173,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       (error) => {
         if (reqId !== activeGpsReqRef.current) return;
         setIsLocating(false);
-        setGeoError(
-          `Location access denied or unavailable (${error.message}). Retaining manual location.`
-        );
+        setGeoError(t('location.gpsDeniedError', { error: error.message }));
         setGeoNotice(null);
       },
       { timeout: 10000, enableHighAccuracy: true }
@@ -187,7 +195,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       return (
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/80 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
           <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-          <span>GPS Geolocation</span>
+          <span>{t('location.sourceGps')}</span>
         </span>
       );
     }
@@ -195,26 +203,26 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       return (
         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/80 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-800">
           <Sparkles className="w-3 h-3 text-amber-600" />
-          <span>Example Scenario</span>
+          <span>{t('location.sourcePreset')}</span>
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
         <MapPin className="w-3 h-3 text-slate-500" />
-        <span>Manual Selection</span>
+        <span>{t('location.sourceManual')}</span>
       </span>
     );
   };
 
-  const selectedPreset = EXAMPLE_PRESETS.find((p) => p.id === selectedPresetId);
+  const selectedPreset = examplePresets.find((p) => p.id === selectedPresetId);
 
   return (
     <div className="space-y-4">
       {/* Geolocation Button */}
       <div className="flex items-center justify-between">
         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-          Authority Location Coordinates
+          {t('location.authorityCoordsLabel')}
         </label>
         <div className="flex items-center gap-2">
           {getSourceBadge()}
@@ -225,7 +233,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
             className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg text-xs font-semibold shadow-xs transition duration-150 cursor-pointer"
           >
             <Navigation className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-            <span>{isLocating ? 'Acquiring GPS...' : 'Use Device GPS'}</span>
+            <span>{isLocating ? t('location.acquiringGps') : t('location.useGps')}</span>
           </button>
         </div>
       </div>
@@ -234,7 +242,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-            Latitude (°N)
+            {t('location.latLabel')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -246,7 +254,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               value={location.latitude}
               onChange={(e) => handleCoordinatesInputChange(parseFloat(e.target.value) || 0, location.longitude)}
               className="w-full pl-12 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 text-sm font-mono"
-              placeholder="e.g. 18.5200"
+              placeholder={t('location.latPlaceholder')}
               required
             />
           </div>
@@ -254,7 +262,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
 
         <div>
           <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
-            Longitude (°E)
+            {t('location.lonLabel')}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -266,7 +274,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
               value={location.longitude}
               onChange={(e) => handleCoordinatesInputChange(location.latitude, parseFloat(e.target.value) || 0)}
               className="w-full pl-12 pr-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 dark:text-gray-100 text-sm font-mono"
-              placeholder="e.g. 73.8500"
+              placeholder={t('location.lonPlaceholder')}
               required
             />
           </div>
@@ -292,11 +300,11 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
         <div className="flex items-center gap-1.5 mb-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-            Try an Example Scenario
+            {t('location.tryPresetScenario')}
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {EXAMPLE_PRESETS.map((preset) => {
+          {examplePresets.map((preset) => {
             const isSelected = selectedPresetId === preset.id;
             return (
               <button
@@ -322,7 +330,7 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
                   <div className="flex items-center gap-1">
                     {isSelected && (
                       <span className="text-[10px] px-1.5 py-0.5 font-bold rounded-full bg-emerald-600 text-white flex items-center gap-0.5">
-                        ✓ Selected
+                        {t('location.selectedBadge')}
                       </span>
                     )}
                     <span
@@ -355,10 +363,10 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
           <div className="mt-2.5 p-2 bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-lg text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-              <span>Loaded: <strong>{selectedPreset.title}</strong> — {selectedPreset.description}</span>
+              <span>{t('location.loadedPrefix', { title: selectedPreset.title, description: selectedPreset.description })}</span>
             </div>
             <span className="text-[10px] uppercase tracking-wider font-mono text-emerald-600 dark:text-emerald-400 hidden sm:inline">
-              Ready
+              {t('location.readyBadge')}
             </span>
           </div>
         )}
@@ -366,3 +374,4 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
     </div>
   );
 };
+

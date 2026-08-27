@@ -2,7 +2,7 @@
 
 **AI-driven crop price forecasting and market routing for Indian farmers.**
 
-[Live App](https://fasaldisha.vercel.app) · [API Docs](http://localhost:8000/docs)
+[Live App](https://fasaldisha.vercel.app) · [API Docs](https://fasaldisha-backend.onrender.com/docs)
 
 ---
 

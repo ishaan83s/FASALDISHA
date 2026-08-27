@@ -1,6 +1,6 @@
 /**
  * MandiLocationRadarMap Component: Visual Location & Mandi Regional Map.
- * SSOT & Wireframe Reference: "Map that shows current location to Mandis in 100km and highlights
+ * SSOT & Wireframe Reference: "Map that shows current location to Mandis in search radius and highlights
  * the Mandi region by colour which gives best -> worst profit (Blue are mandis, green is best mandi)".
  */
 import React, { useState } from 'react';
@@ -21,22 +21,33 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
   const [selectedMandiId, setSelectedMandiId] = useState<string | null>(null);
 
   const radiusKm = farmerContext.radiusKm || 100;
-  const farmerLat = farmerContext.latitude;
-  const farmerLng = farmerContext.longitude;
+  const farmerLat = Number(farmerContext.latitude) || 18.5204;
+  const farmerLng = Number(farmerContext.longitude) || 73.8567;
 
   // SVG viewport dimensions
   const svgSize = 340;
   const center = svgSize / 2;
   const maxPixelRadius = center - 36; // leave margin for labels
 
+  // Dynamic distance ring definitions (1/3, 2/3, 1.0 of radiusKm)
+  const distanceRings = [
+    { fraction: 0.333, km: Math.round(radiusKm / 3) },
+    { fraction: 0.666, km: Math.round((radiusKm * 2) / 3) },
+    { fraction: 1.0, km: Math.round(radiusKm) },
+  ];
+
   // Project lat/lng offset to polar X, Y on the map
-  const projectMandi = (mLat: number, mLng: number, distKm: number) => {
+  const projectMandi = (mLat?: number, mLng?: number, distKm?: number) => {
+    if (mLat == null || mLng == null || isNaN(mLat) || isNaN(mLng)) {
+      return null;
+    }
+    const safeDist = distKm != null && !isNaN(distKm) ? distKm : 10;
     // Relative km offset in lat/lng (~111km per degree latitude)
     const dLat = (mLat - farmerLat) * 111.0;
     const dLng = (mLng - farmerLng) * 111.0 * Math.cos((farmerLat * Math.PI) / 180);
 
     // Scale distance relative to radiusKm
-    const effectiveDist = Math.min(distKm, radiusKm * 1.05);
+    const effectiveDist = Math.min(safeDist, radiusKm * 1.05);
     const r = (effectiveDist / Math.max(radiusKm, 1)) * maxPixelRadius;
     const angle = Math.atan2(dLat, dLng); // trigonometric angle
 
@@ -47,7 +58,11 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
     return { x, y, r };
   };
 
+  const recommendedCandidate =
+    candidates.find((c) => c.mandi.mandiId === recommendedMandiId || c.rank === 1) || candidates[0] || null;
+
   const selectedCandidate = candidates.find((c) => c.mandi.mandiId === selectedMandiId) || null;
+  const activeCandidate = selectedCandidate || recommendedCandidate;
 
   return (
     <div className="bg-white dark:bg-[#151c24] border border-earth-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3">
@@ -96,60 +111,104 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
             strokeDasharray="3 3"
           />
 
-          {/* Concentric Range Rings */}
-          {[0.33, 0.66, 1.0].map((fraction, idx) => {
-            const r = maxPixelRadius * fraction;
-            const km = Math.round(radiusKm * fraction);
+          {/* Dynamic Concentric Distance Rings */}
+          {distanceRings.map((ring) => {
+            const r = maxPixelRadius * ring.fraction;
             return (
-              <g key={idx}>
+              <g key={`ring-${ring.km}`}>
                 <circle
                   cx={center}
                   cy={center}
                   r={r}
                   fill="none"
                   stroke="currentColor"
-                  className={fraction === 1.0 ? 'text-emerald-300/70 dark:text-emerald-800/70' : 'text-slate-200 dark:text-slate-800'}
-                  strokeWidth={fraction === 1.0 ? 1.5 : 1}
-                  strokeDasharray={fraction === 1.0 ? 'none' : '4 4'}
+                  className={ring.fraction === 1.0 ? 'text-emerald-400/80 dark:text-emerald-700/80' : 'text-slate-200 dark:text-slate-800'}
+                  strokeWidth={ring.fraction === 1.0 ? 1.5 : 1}
+                  strokeDasharray={ring.fraction === 1.0 ? 'none' : '4 4'}
                 />
                 <text
                   x={center + 4}
                   y={center - r + 11}
-                  className="text-[9px] fill-slate-400 font-mono"
+                  className="text-[9px] fill-slate-400 font-mono select-none pointer-events-none"
                 >
-                  {km}km
+                  {ring.km} km
                 </text>
               </g>
             );
           })}
 
-          {/* Dotted Route Lines to Mandis */}
+          {/* Subtle Radar Sweep (isolated decorative layer) */}
+          <g
+            className="animate-[spin_10s_linear_infinite] pointer-events-none"
+            style={{ transformOrigin: `${center}px ${center}px` }}
+          >
+            <defs>
+              <linearGradient id="radarSweepGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+              </linearGradient>
+            </defs>
+            <path
+              d={`M ${center} ${center} L ${center + maxPixelRadius} ${center} A ${maxPixelRadius} ${maxPixelRadius} 0 0 1 ${center + maxPixelRadius * 0.707} ${center + maxPixelRadius * 0.707} Z`}
+              fill="url(#radarSweepGradient)"
+            />
+            <line
+              x1={center}
+              y1={center}
+              x2={center + maxPixelRadius}
+              y2={center}
+              stroke="#10b981"
+              strokeWidth={1}
+              strokeOpacity={0.35}
+            />
+          </g>
+
+          {/* Geographic Straight-Line Route Connectors from Origin to Mandis */}
           {candidates.map((c) => {
-            const { x, y } = projectMandi(c.mandi.latitude, c.mandi.longitude, c.distanceKm);
+            const proj = projectMandi(c.mandi.latitude, c.mandi.longitude, c.distanceKm);
+            if (!proj) return null;
+            const { x, y } = proj;
             const isRec = c.mandi.mandiId === recommendedMandiId || c.rank === 1;
+            const isSelected = c.mandi.mandiId === selectedMandiId;
 
             return (
-              <line
-                key={`line-${c.mandi.mandiId}`}
-                x1={center}
-                y1={center}
-                x2={x}
-                y2={y}
-                stroke={isRec ? '#059669' : '#94a3b8'}
-                strokeWidth={isRec ? 2 : 1}
-                strokeDasharray={isRec ? 'none' : '2 3'}
-                strokeOpacity={isRec ? 0.8 : 0.4}
-              />
+              <g key={`route-${c.mandi.mandiId}`}>
+                {/* Glow aura for recommended route */}
+                {isRec && (
+                  <line
+                    x1={center}
+                    y1={center}
+                    x2={x}
+                    y2={y}
+                    stroke="#10b981"
+                    strokeWidth={5}
+                    strokeOpacity={0.25}
+                    strokeLinecap="round"
+                  />
+                )}
+                <line
+                  x1={center}
+                  y1={center}
+                  x2={x}
+                  y2={y}
+                  stroke={isRec ? '#059669' : isSelected ? '#2563eb' : '#64748b'}
+                  strokeWidth={isRec ? 2.5 : isSelected ? 2 : 1.2}
+                  strokeDasharray={isRec ? 'none' : isSelected ? '4 2' : '3 3'}
+                  strokeOpacity={isRec ? 0.95 : isSelected ? 0.8 : 0.45}
+                  strokeLinecap="round"
+                />
+              </g>
             );
           })}
 
           {/* Center: Farmer Location */}
-          <g>
+          <g key="farmer-origin">
             <circle
               cx={center}
               cy={center}
-              r={16}
-              className="fill-emerald-500/20 animate-ping origin-center"
+              r={14}
+              fill="#10b981"
+              fillOpacity={0.18}
             />
             <circle
               cx={center}
@@ -162,7 +221,7 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
               x={center}
               y={center + 18}
               textAnchor="middle"
-              className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200"
+              className="text-[10px] font-bold fill-slate-800 dark:fill-slate-200 select-none pointer-events-none"
             >
               Your Farm
             </text>
@@ -170,35 +229,50 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
 
           {/* Mandi Markers */}
           {candidates.map((c) => {
-            const { x, y } = projectMandi(c.mandi.latitude, c.mandi.longitude, c.distanceKm);
+            const proj = projectMandi(c.mandi.latitude, c.mandi.longitude, c.distanceKm);
+            if (!proj) return null;
+            const { x, y } = proj;
             const isRec = c.mandi.mandiId === recommendedMandiId || c.rank === 1;
             const isSelected = c.mandi.mandiId === selectedMandiId;
 
             return (
               <g
                 key={`mandi-${c.mandi.mandiId}`}
-                className="cursor-pointer group"
+                className="cursor-pointer"
                 onClick={() => setSelectedMandiId(c.mandi.mandiId === selectedMandiId ? null : c.mandi.mandiId)}
               >
-                {/* Glow ring for recommended */}
+                {/* Spotlight aura for recommended mandi */}
                 {isRec && (
-                  <circle
-                    cx={x}
-                    cy={y}
-                    r={14}
-                    className="fill-emerald-500/30 animate-pulse"
-                  />
+                  <>
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={15}
+                      fill="#10b981"
+                      className="animate-[pulse_3s_ease-in-out_infinite]"
+                      fillOpacity={0.22}
+                    />
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r={21}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth={1}
+                      strokeDasharray="2 2"
+                      strokeOpacity={0.4}
+                    />
+                  </>
                 )}
 
                 {/* Mandi Node */}
                 <circle
                   cx={x}
                   cy={y}
-                  r={isRec ? 9 : 6.5}
+                  r={isRec ? 9 : isSelected ? 8 : 6.5}
                   fill={isRec ? '#059669' : isSelected ? '#2563eb' : '#3b82f6'}
                   stroke="#ffffff"
                   strokeWidth={2}
-                  className="transition-transform group-hover:scale-125"
                 />
 
                 {/* Rank number inside node */}
@@ -211,14 +285,39 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
                   {c.rank}
                 </text>
 
-                {/* Name Label */}
+                {/* Spotlight Badge for Recommended Market */}
+                {isRec && (
+                  <g className="pointer-events-none select-none">
+                    <rect
+                      x={x - 44}
+                      y={y - 32}
+                      width={88}
+                      height={16}
+                      rx={4}
+                      fill="#065f46"
+                      fillOpacity={0.92}
+                      stroke="#10b981"
+                      strokeWidth={0.75}
+                    />
+                    <text
+                      x={x}
+                      y={y - 21}
+                      textAnchor="middle"
+                      className="text-[7.5px] font-black fill-emerald-100 font-mono tracking-wider"
+                    >
+                      BEST • ₹{Math.round(c.riskAdjustedReturn).toLocaleString('en-IN')}
+                    </text>
+                  </g>
+                )}
+
+                {/* Mandi Name Label */}
                 <text
                   x={x}
-                  y={y - 12}
+                  y={y + 17}
                   textAnchor="middle"
                   className={`text-[9px] font-bold select-none pointer-events-none ${
                     isRec
-                      ? 'fill-emerald-700 dark:fill-emerald-300 font-extrabold'
+                      ? 'fill-emerald-800 dark:fill-emerald-300 font-extrabold'
                       : 'fill-slate-700 dark:fill-slate-300'
                   }`}
                 >
@@ -231,34 +330,78 @@ export const MandiLocationRadarMap: React.FC<MandiLocationRadarMapProps> = ({
 
         {/* Legend Overlay at Bottom Right */}
         <div className="absolute bottom-2 right-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs border border-earth-200 dark:border-slate-800 rounded-xl p-1.5 text-[9px] font-semibold space-y-1 shadow-2xs">
-          <div className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
-            <span>Best Market (#1)</span>
+          <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+            <span className="w-2.5 h-0.5 bg-emerald-600 rounded-full inline-block" />
+            <span>Recommended Route (#1)</span>
           </div>
-          <div className="flex items-center gap-1 text-blue-700 dark:text-blue-400">
-            <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" />
-            <span>Candidate APMC</span>
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <span className="w-2.5 h-0.5 bg-slate-400 border-t border-dashed border-slate-500 inline-block" />
+            <span>Candidate Routes</span>
           </div>
         </div>
       </div>
 
-      {/* Selected Mandi Quick Tooltip */}
-      {selectedCandidate && (
-        <div className="p-3 bg-earth-50 dark:bg-slate-900 rounded-2xl border border-earth-200 dark:border-slate-800 text-xs flex items-center justify-between">
-          <div>
-            <span className="font-bold text-slate-900 dark:text-white block font-heading">
-              #{selectedCandidate.rank} {selectedCandidate.mandi.mandiName}
-            </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              {selectedCandidate.distanceKm} km • Predicted ₹{selectedCandidate.currentPrice}/q
+      {/* Vector disclaimer footnote */}
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 text-center italic">
+        Straight-line geographic distance vectors from farm origin (not road navigation routes).
+      </p>
+
+      {/* Economic Selection Callout (Level 4: Market Price -> Transport -> Net Return) */}
+      {activeCandidate && (
+        <div className="p-3.5 bg-earth-50/80 dark:bg-slate-900/90 rounded-2xl border border-earth-200 dark:border-slate-800 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-mono ${
+                  activeCandidate.rank === 1
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                }`}
+              >
+                #{activeCandidate.rank}
+              </span>
+              <span className="font-bold text-slate-900 dark:text-white text-xs font-heading">
+                {activeCandidate.mandi.mandiName}
+              </span>
+              {activeCandidate.rank === 1 && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                  Top Recommendation
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 font-mono">
+              {activeCandidate.distanceKm} km away
             </span>
           </div>
 
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 uppercase block font-bold">Net Return</span>
-            <span className="font-extrabold text-agri-700 dark:text-agri-400 font-heading">
-              ₹{selectedCandidate.riskAdjustedReturn.toLocaleString('en-IN')}
-            </span>
+          {/* 3-Step Economic Reasoning Hierarchy */}
+          <div className="grid grid-cols-3 gap-2 text-center pt-1 border-t border-earth-200/60 dark:border-slate-800">
+            <div className="p-1.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-100 dark:border-slate-700/60">
+              <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                Market Price
+              </span>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 font-heading">
+                ₹{activeCandidate.currentPrice.toLocaleString('en-IN')}/q
+              </span>
+            </div>
+
+            <div className="p-1.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-100 dark:border-slate-700/60">
+              <span className="text-[9px] uppercase font-bold text-slate-400 block">
+                Transit Impact
+              </span>
+              <span className="text-xs font-bold text-amber-700 dark:text-amber-400 font-heading">
+                -₹{Math.round(activeCandidate.totalTransportCost).toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            <div className="p-1.5 bg-emerald-50/90 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+              <span className="text-[9px] uppercase font-bold text-emerald-800 dark:text-emerald-300 block">
+                Net Return
+              </span>
+              <span className="text-xs font-black text-emerald-900 dark:text-emerald-200 font-heading">
+                ₹{Math.round(activeCandidate.riskAdjustedReturn).toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         </div>
       )}

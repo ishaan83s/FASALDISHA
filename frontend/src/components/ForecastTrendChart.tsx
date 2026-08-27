@@ -94,7 +94,9 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
         <div className="pt-2">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
             <span>Daily Price Trajectory (₹/Quintal)</span>
-            <span>Forecast Confidence: {Math.round(forecast.forecastConfidence * 100)}%</span>
+            <span title="Forecast confidence is a model reliability heuristic for this forecast horizon.">
+              Model Reliability: {Math.round(forecast.forecastConfidence * 100)}%
+            </span>
           </div>
 
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
@@ -143,7 +145,7 @@ export const ForecastTrendChart: React.FC<ForecastTrendChartProps> = ({
       {/* Provenance note */}
       <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
         <span>Basis: {forecast.historySourceLabel}</span>
-        <span>Model: {forecast.modelType}</span>
+        <span>Model: {forecast.modelType === 'LIVE' ? 'Live ML Inference' : 'Precomputed Fallback'}</span>
       </div>
     </div>
   );

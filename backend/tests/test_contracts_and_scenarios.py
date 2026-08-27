@@ -199,3 +199,52 @@ def test_gps_location_resolution_and_consistent_analysis():
     # Weather is normal baseline (no seeded Pune rainfall)
     assert data["weather"]["impactLevel"] == "LOW"
 
+
+def test_ml_forecast_state_propagation_across_states():
+    """Verify ML forecast dynamically resolves and encodes Maharashtra, Gujarat, and Rajasthan correctly."""
+    from app.services.forecast_service import ForecastService
+    from app.schemas.common import ModelType
+
+    # 1. Maharashtra
+    mh_fc = ForecastService.get_forecast(
+        commodity_id="onion",
+        mandi_id="mandi_pune_chakan",
+        state_id="maharashtra",
+        district_id="pune",
+        current_price_override=2300.0,
+    )
+    assert mh_fc.model_type == ModelType.LIVE
+    assert mh_fc.forecast_7_day > 0
+
+    # 2. Gujarat
+    gj_fc = ForecastService.get_forecast(
+        commodity_id="cotton",
+        mandi_id="mandi_ahmedabad_jamalpur",
+        state_id="gujarat",
+        district_id="ahmedabad",
+        current_price_override=7100.0,
+    )
+    assert gj_fc.model_type == ModelType.LIVE
+    assert gj_fc.forecast_7_day > 0
+
+    # 3. Rajasthan
+    rj_fc = ForecastService.get_forecast(
+        commodity_id="wheat",
+        mandi_id="mandi_kota_bhamashah",
+        state_id="rajasthan",
+        district_id="kota",
+        current_price_override=2500.0,
+    )
+    assert rj_fc.model_type == ModelType.LIVE
+    assert rj_fc.forecast_7_day > 0
+
+    # 4. Unsupported state gracefully falls back to precomputed (never silently forced to Maharashtra)
+    unsupported_fc = ForecastService.get_forecast(
+        commodity_id="onion",
+        mandi_id="mandi_unknown",
+        state_id="karnataka",
+        district_id="bangalore",
+        current_price_override=2000.0,
+    )
+    assert unsupported_fc.model_type == ModelType.PRECOMPUTED
+

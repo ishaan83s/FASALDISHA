@@ -41,7 +41,7 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white font-heading">
-              Why We Recommend This (Judge & Logic Audit Trail)
+              Why We Recommend This (Decision & Logic Audit Trail)
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Inspect the 4 mathematical pillars, buyer signals, weather overrides, and ML data provenance.
@@ -163,16 +163,24 @@ export const WhyRecommendationDrawer: React.FC<WhyRecommendationDrawerProps> = (
                 <span>4. Machine Learning Provenance</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
-                Price projections are computed with 7-day multi-horizon forecasting, peak gain detection (5%+ threshold), and contract-safe derived propagation.
+                Price projections are computed via live in-memory XGBoost regression trained on regional market patterns, evaluating a 7-day price trajectory with peak horizon detection.
               </p>
               <div className="p-2.5 bg-white dark:bg-slate-800/80 rounded-xl border border-earth-200/80 dark:border-slate-700/60 text-[11px] space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Model Engine Type:</span>
-                  <strong className="text-slate-800 dark:text-slate-200 font-mono">{forecast.modelType}</strong>
+                  <strong className="text-slate-800 dark:text-slate-200 font-mono">
+                    {forecast.modelType === 'LIVE' ? 'Live ML Inference (XGBoost)' : 'Precomputed Series'}
+                  </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Historical Series Basis:</span>
-                  <strong className="text-slate-800 dark:text-slate-200">{forecast.historyWindowDays}-Day Window</strong>
+                  <span className="text-slate-500">Training / Data Basis:</span>
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {forecast.historyClassification === 'SYNTHETIC'
+                      ? 'Synthetic Training Baseline'
+                      : forecast.historyClassification === 'SEEDED'
+                      ? 'Seeded Market Baseline'
+                      : 'Historical Series'} ({forecast.historyWindowDays}-Day Window)
+                  </strong>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Data Source Label:</span>

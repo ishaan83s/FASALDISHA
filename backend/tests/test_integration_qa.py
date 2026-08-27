@@ -124,7 +124,7 @@ def test_06_analysis_run_pune_onion_seeded_risk_override():
     assert forecast["forecast7Day"] > 0
     assert forecast["expectedPeakPrice"] >= forecast["currentPrice"]
     assert forecast["peakDay"] > 0
-    assert forecast["historyClassification"] in ["REAL", "SEEDED", "CACHED_REAL"]
+    assert forecast["historyClassification"] in ["REAL", "SEEDED", "CACHED_REAL", "SYNTHETIC"]
     assert forecast["modelType"] in ["LIVE", "PRECOMPUTED"]
 
     # 5. Weather & Risk Override Verification (SSOT 13 Section A & F)

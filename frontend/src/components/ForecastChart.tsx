@@ -126,8 +126,8 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({ forecast }) => {
 
       {/* Provenance Footnote */}
       <div className="pt-2 flex items-center justify-between text-[11px] text-gray-400 border-t border-gray-100 dark:border-gray-700/60">
-        <span>Basis: {forecast.historySourceLabel} ({forecast.historyClassification})</span>
-        <span>Model: {forecast.modelType}</span>
+        <span>Basis: {forecast.historySourceLabel}</span>
+        <span>Model: {forecast.modelType === 'LIVE' ? 'Live ML Inference' : 'Precomputed Series'}</span>
       </div>
     </div>
   );

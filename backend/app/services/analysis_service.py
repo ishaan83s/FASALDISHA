@@ -148,6 +148,8 @@ class AnalysisService:
                 commodity_id=request.commodity_id,
                 mandi_id=mandi_model.mandi_id,
                 current_price_override=current_price,
+                state_id=mandi_model.state_id,
+                district_id=mandi_model.district_id,
             )
             transport_per_q, total_transport = TransportService.calculate_transport(
                 distance_km=dist_km,
@@ -207,7 +209,11 @@ class AnalysisService:
         top_forecast = (
             ranked_candis[0].forecast
             if ranked_candis
-            else ForecastService.get_forecast(request.commodity_id)
+            else ForecastService.get_forecast(
+                commodity_id=request.commodity_id,
+                state_id=request.state_id,
+                district_id=request.district_id,
+            )
         )
 
         # Step 6: Origin Risk Summary

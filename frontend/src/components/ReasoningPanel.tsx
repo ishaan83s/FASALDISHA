@@ -34,10 +34,10 @@ export const ReasoningPanel: React.FC<ReasoningPanelProps> = ({ result }) => {
           <ShieldCheck className="w-5 h-5 text-emerald-400" />
           <div>
             <h3 className="text-sm font-bold text-white">
-              System Audit & Judge-Proof Verification
+              System Decision Audit & Explainability
             </h3>
             <p className="text-[11px] text-gray-400">
-              Live audit data answering all 6 judge Q&A anchors (SSOT v2.1)
+              Full transparency into ranking math, ML provenance, weather risk, and economics
             </p>
           </div>
         </div>
@@ -82,7 +82,7 @@ export const ReasoningPanel: React.FC<ReasoningPanelProps> = ({ result }) => {
               <p className="text-gray-300 leading-relaxed text-[11px]">
                 {topMandi ? (
                   <>
-                    <strong>{topMandi.buyerSignal.activeBuyerCount} active buyers</strong> aggregated from demo catalog. Demand: <strong>{topMandi.buyerSignal.demandLevel}</strong>, Offer: {topMandi.buyerSignal.offerStrength}%, Reliability: {topMandi.buyerSignal.reliability}%.
+                    <strong>{topMandi.buyerSignal.activeBuyerCount} active buyers</strong> aggregated from market trader network. Demand: <strong>{topMandi.buyerSignal.demandLevel}</strong>, Offer: {topMandi.buyerSignal.offerStrength}%, Reliability: {topMandi.buyerSignal.reliability}%.
                     <br />
                     <span className="text-[10px] text-amber-300 font-bold uppercase block mt-0.5">
                       Honesty Classification: {topMandi.buyerSignal.classification}
@@ -117,7 +117,7 @@ export const ReasoningPanel: React.FC<ReasoningPanelProps> = ({ result }) => {
                 <span>4. ML Forecast Provenance & Peak Alert</span>
               </div>
               <p className="text-gray-300 leading-relaxed text-[11px]">
-                Model: <strong>{result.forecast.modelType}</strong> ({result.forecast.forecastScope}) • Basis: <strong>{result.forecast.historyClassification}</strong> ({result.forecast.historyWindowDays}-day series).
+                Model: <strong>{result.forecast.modelType === 'LIVE' ? 'Live ML Inference' : 'Precomputed Series'}</strong> ({result.forecast.forecastScope}) • Basis: <strong>{result.forecast.historyClassification === 'SYNTHETIC' ? 'Synthetic Training Baseline' : result.forecast.historyClassification === 'SEEDED' ? 'Seeded Market Baseline' : 'Historical Baseline'}</strong> ({result.forecast.historyWindowDays}-day series).
                 <br />
                 Peak Price: <strong>₹{result.forecast.expectedPeakPrice.toLocaleString('en-IN')}</strong> on <strong>Day {result.forecast.peakDay}</strong> (Peak Alert: {result.forecast.peakAlert ? 'ACTIVE' : 'OFF'}).
               </p>

@@ -22,6 +22,8 @@ class ForecastService:
         mandi_id: Optional[str] = None,
         as_of_date: Optional[str] = None,
         current_price_override: Optional[float] = None,
+        state_id: Optional[str] = None,
+        district_id: Optional[str] = None,
     ) -> ForecastOutput:
         """
         Retrieves crop price forecast from ML module or contract-compliant precomputed fallback.
@@ -32,4 +34,6 @@ class ForecastService:
             mandi_id=mandi_id,
             as_of_date=as_of_date,
             current_price_override=current_price_override,
+            state_id=state_id,
+            district_id=district_id,
         )

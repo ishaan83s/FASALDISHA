@@ -91,6 +91,8 @@ def _try_live_xgboost_inference(
     commodity_id: str,
     mandi_id: Optional[str] = None,
     current_price_override: Optional[float] = None,
+    state_id: Optional[str] = None,
+    district_id: Optional[str] = None,
 ) -> Optional[ForecastOutput]:
     """
     Executes actual live inference on trained XGBoost model.
@@ -121,21 +123,89 @@ def _try_live_xgboost_inference(
         cat_classes = encoders["crop_category"].classes_
         enc_cat = int(encoders["crop_category"].transform([crop_cat])[0]) if crop_cat in cat_classes else 0
 
-        # Resolve state, district, mandi safely
-        enc_state = int(encoders["state"].transform(["Maharashtra"])[0])
-        enc_dist = int(encoders["district"].transform(["Pune"])[0])
-        enc_mandi = int(encoders["mandi"].transform(["Pune Market Yard"])[0])
+        # 1. Dynamically resolve state
+        state_classes = encoders["state"].classes_  # e.g., ['Gujarat', 'Maharashtra', 'Rajasthan']
+        state_name = None
 
-        if mandi_id:
+        if state_id:
+            s_clean = state_id.strip().lower()
+            for sc in state_classes:
+                if sc.lower() == s_clean or s_clean in sc.lower():
+                    state_name = sc
+                    break
+
+        if not state_name and mandi_id:
+            m_clean = mandi_id.strip().lower()
+            if any(k in m_clean for k in ["ahmedabad", "surat", "rajkot", "gondal", "unjha", "vadodara", "anand", "palanpur", "junagadh", "mehsana"]):
+                state_name = "Gujarat"
+            elif any(k in m_clean for k in ["jaipur", "jodhpur", "kota", "alwar", "sikar", "bikaner", "ajmer", "udaipur", "chomu", "muhana", "merta"]):
+                state_name = "Rajasthan"
+            elif any(k in m_clean for k in ["pune", "mumbai", "nashik", "ahmednagar", "solapur", "kolhapur", "nagpur", "chhatrapati", "csn", "shrigonda", "gultekdi", "chakan", "shirur", "junnar", "baramati", "lasalgaon", "pimpalgaon"]):
+                state_name = "Maharashtra"
+
+        if not state_name and district_id:
+            d_clean = district_id.strip().lower()
+            if any(k in d_clean for k in ["ahmedabad", "surat", "rajkot", "vadodara", "junagadh", "mehsana", "anand", "banaskantha"]):
+                state_name = "Gujarat"
+            elif any(k in d_clean for k in ["jaipur", "jodhpur", "kota", "alwar", "sikar", "bikaner", "ajmer", "udaipur"]):
+                state_name = "Rajasthan"
+            elif any(k in d_clean for k in ["pune", "nashik", "ahmednagar", "solapur", "kolhapur", "nagpur", "chhatrapati_sambhajinagar", "mumbai"]):
+                state_name = "Maharashtra"
+
+        if not state_name or state_name not in state_classes:
+            logger.info(
+                "State '%s' (state_id='%s', mandi_id='%s') is not recognized or not in trained XGBoost state classes (%s). Using fallback.",
+                state_name, state_id, mandi_id, list(state_classes)
+            )
+            return None
+
+        enc_state = int(encoders["state"].transform([state_name])[0])
+
+        # 2. Dynamically resolve district
+        dist_classes = encoders["district"].classes_
+        enc_dist = None
+
+        if district_id:
+            d_clean = district_id.strip().lower().replace("_", " ")
+            for dc in dist_classes:
+                if dc.lower() == d_clean or d_clean in dc.lower():
+                    enc_dist = int(encoders["district"].transform([dc])[0])
+                    break
+
+        if enc_dist is None and mandi_id:
             m_lower = mandi_id.lower()
-            for d in encoders["district"].classes_:
+            for d in dist_classes:
                 if d.lower() in m_lower:
                     enc_dist = int(encoders["district"].transform([d])[0])
                     break
-            for m in encoders["mandi"].classes_:
+
+        if enc_dist is None:
+            default_dist_by_state = {
+                "Gujarat": "Ahmedabad",
+                "Maharashtra": "Pune",
+                "Rajasthan": "Kota",
+            }
+            fallback_dist = default_dist_by_state.get(state_name, dist_classes[0])
+            enc_dist = int(encoders["district"].transform([fallback_dist])[0])
+
+        # 3. Dynamically resolve mandi
+        mandi_classes = encoders["mandi"].classes_
+        enc_mandi = None
+        if mandi_id:
+            m_lower = mandi_id.lower()
+            for m in mandi_classes:
                 if any(part in m_lower for part in m.lower().split() if len(part) > 3):
                     enc_mandi = int(encoders["mandi"].transform([m])[0])
                     break
+
+        if enc_mandi is None:
+            default_mandi_by_state = {
+                "Gujarat": "Ahmedabad APMC",
+                "Maharashtra": "Pune Market Yard",
+                "Rajasthan": "Kota APMC",
+            }
+            fallback_mandi = default_mandi_by_state.get(state_name, mandi_classes[0])
+            enc_mandi = int(encoders["mandi"].transform([fallback_mandi])[0])
 
         base_p = current_price_override if (current_price_override and current_price_override > 0) else 2200.0
 
@@ -172,8 +242,8 @@ def _try_live_xgboost_inference(
 
         df_feat = pd.DataFrame(rows)[features]
         logger.info(
-            "Executing live XGBoost model.predict(): commodity='%s', mandi='%s', shape=%s",
-            comm_title, mandi_id or "default", df_feat.shape
+            "Executing live XGBoost model.predict(): commodity='%s', mandi='%s', state='%s' (encoded=%d), shape=%s",
+            comm_title, mandi_id or "default", state_name, enc_state, df_feat.shape
         )
         raw_preds = model.predict(df_feat)
         logger.info(
@@ -219,8 +289,8 @@ def _try_live_xgboost_inference(
             forecast_confidence=0.78,
             model_type=ModelType.LIVE,
             history_window_days=45,
-            history_classification=DataClassification.REAL,
-            history_source_label="Trained XGBoost Regressor (ml/models/mandi_price_model.pkl)",
+            history_classification=DataClassification.SYNTHETIC,
+            history_source_label="Trained XGBoost Regressor (Synthetic training baseline)",
             forecast_scope=ForecastScope.DIRECT_MODEL,
         )
     except Exception as e:
@@ -236,6 +306,8 @@ def get_forecast(
     mandi_id: Optional[str] = None,
     as_of_date: Optional[str] = None,
     current_price_override: Optional[float] = None,
+    state_id: Optional[str] = None,
+    district_id: Optional[str] = None,
 ) -> ForecastOutput:
     """
     Canonical ML boundary interface with strict provenance honesty.
@@ -248,6 +320,8 @@ def get_forecast(
         commodity_id=commodity_id,
         mandi_id=mandi_id,
         current_price_override=current_price_override,
+        state_id=state_id,
+        district_id=district_id,
     )
     if live_result is not None:
         return live_result
@@ -300,7 +374,7 @@ def get_forecast(
                 model_type=ModelType.PRECOMPUTED,
                 history_window_days=raw.get("historyWindowDays", 45),
                 history_classification=DataClassification(raw.get("historyClassification", "SEEDED")),
-                history_source_label=raw.get("historySourceLabel", "Agmarknet Historical / Precomputed Series"),
+                history_source_label=raw.get("historySourceLabel", "Seeded market baseline (Precomputed series)"),
                 forecast_scope=ForecastScope.DERIVED_PROPAGATION,
             )
 
@@ -326,7 +400,7 @@ def get_forecast(
             model_type=ModelType.PRECOMPUTED,
             history_window_days=raw.get("historyWindowDays", 45),
             history_classification=DataClassification(raw.get("historyClassification", "SEEDED")),
-            history_source_label=raw.get("historySourceLabel", "Agmarknet Historical / Precomputed Series"),
+            history_source_label=raw.get("historySourceLabel", "Seeded market baseline (Precomputed series)"),
             forecast_scope=ForecastScope.DIRECT_MODEL,
         )
 

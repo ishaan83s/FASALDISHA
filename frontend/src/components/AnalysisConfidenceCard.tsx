@@ -54,7 +54,7 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
           />
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Composite score evaluating live market signals, forecast validity, and transit risks.
+          Composite score evaluating regional market spreads, model reliability heuristics, and transit risks.
         </p>
       </div>
 
@@ -70,8 +70,8 @@ export const AnalysisConfidenceCard: React.FC<AnalysisConfidenceCardProps> = ({
             <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-slate-800 dark:text-slate-200 block text-[11px]">Price Forecast</span>
-              <span className="text-[10px] text-slate-400">
-                {Math.round(forecast.forecastConfidence * 100)}% Model Confidence
+              <span className="text-[10px] text-slate-400" title="Forecast confidence is a model reliability heuristic for this forecast horizon.">
+                {Math.round(forecast.forecastConfidence * 100)}% Model Reliability
               </span>
             </div>
           </div>
